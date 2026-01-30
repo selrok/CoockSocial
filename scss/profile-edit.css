@@ -1,0 +1,93 @@
+/* Variables */
+:root {
+  --orange: #fd7e14;
+  --orange-light: #fff7ed;
+  --orange-dark: #e67312;
+}
+
+/* Estilos base */
+body {
+  font-family: "Inter", system-ui, -apple-system, sans-serif;
+  background: linear-gradient(to bottom, var(--orange-light), white);
+  min-height: 100vh;
+}
+
+/* Utilidades */
+.bg-orange-light {
+  background-color: var(--orange-light);
+}
+
+.text-orange {
+  color: var(--orange);
+}
+
+.btn-orange {
+  background-color: var(--orange);
+  color: white;
+  border-color: var(--orange);
+}
+.btn-orange:hover, .btn-orange:focus {
+  background-color: var(--orange-dark);
+  border-color: var(--orange-dark);
+  color: white;
+}
+
+/* Componentes */
+.card {
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+.card-header {
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+.card-footer {
+  padding: 1rem 1.5rem;
+  background-color: rgba(0, 0, 0, 0.02);
+}
+
+.profile-image {
+  transition: all 0.3s ease;
+}
+.profile-image:hover {
+  transform: scale(1.05);
+}
+
+.toggle-password:focus {
+  box-shadow: none;
+}
+
+/* Formulario */
+.form-control:focus {
+  border-color: var(--orange);
+  box-shadow: 0 0 0 0.25rem rgba(253, 126, 20, 0.25);
+}
+
+.was-validated .form-control:invalid,
+.was-validated .form-control.is-invalid {
+  border-color: #dc3545;
+}
+.was-validated .form-control:invalid:focus,
+.was-validated .form-control.is-invalid:focus {
+  box-shadow: 0 0 0 0.25rem rgba(220, 53, 69, 0.25);
+}
+
+.invalid-feedback {
+  font-size: 0.85rem;
+}
+
+/* Responsive */
+@media (max-width: 575.98px) {
+  .card {
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+  }
+  .card-footer {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .card-footer .btn {
+    width: 100%;
+  }
+}/*# sourceMappingURL=profile-edit.css.map */

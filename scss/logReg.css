@@ -1,0 +1,33 @@
+body {
+  font-family: "Inter", system-ui, -apple-system, sans-serif;
+}
+body .text-orange {
+  color: #fd7e14;
+}
+body .text-orangehover {
+  color: #212529;
+}
+body .btn-orange {
+  background-color: #fd7e14;
+  color: #f8f9fa;
+}
+body .btn-orange:hover {
+  background-color: rgb(204.9556962025, 94.1924050633, 1.7443037975);
+  color: #f8f9fa;
+}
+body .nav-tabs .nav-link {
+  font-weight: 500;
+}
+body .nav-tabs .nav-link.active {
+  color: #fd7e14;
+  border-bottom: 3px solid #fd7e14;
+}
+
+@media (max-width: 768px) {
+  .display-4 {
+    font-size: 2.5rem;
+  }
+  .search-container .col-md-2, .search-container .col-md-3 {
+    margin-top: 0.5rem;
+  }
+}/*# sourceMappingURL=logReg.css.map */

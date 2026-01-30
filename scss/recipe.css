@@ -1,0 +1,291 @@
+body {
+  font-family: "Inter", system-ui, -apple-system, sans-serif;
+}
+
+.bg-orange-light {
+  background-color: #fff7ed;
+}
+
+.bg-orange-10 {
+  background-color: rgba(253, 126, 20, 0.05);
+}
+
+.text-orange {
+  color: #fd7e14;
+}
+
+.gap-3 {
+  cursor: pointer;
+}
+
+.btn-orange {
+  background-color: #fd7e14;
+  color: white;
+  border-color: #fd7e14;
+}
+.btn-orange:hover {
+  background-color: rgb(220.1265822785, 101.164556962, 1.8734177215);
+  border-color: rgb(220.1265822785, 101.164556962, 1.8734177215);
+  color: white;
+}
+
+.btn-outline-orange {
+  scale: 1.1;
+  right: 10%;
+  background-color: #fd7e14;
+  color: white;
+  border-color: #fd7e14;
+}
+.btn-outline-orange:hover {
+  background-color: rgb(220.1265822785, 101.164556962, 1.8734177215);
+  border-color: rgb(220.1265822785, 101.164556962, 1.8734177215);
+  color: white;
+}
+
+.avatar {
+  width: 50px;
+  height: 50px;
+  -o-object-fit: cover;
+     object-fit: cover;
+  border-radius: 50%;
+}
+
+.recipe-image-container {
+  width: 90%;
+  height: 400px;
+  margin: 0 auto;
+  overflow: hidden;
+  border-radius: 15px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  background-color: #FFF7ED;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: width 1s cubic-bezier(0.25, 1, 0.5, 1), height 1s cubic-bezier(0.25, 1, 0.5, 1), box-shadow 1s ease;
+}
+.recipe-image-container:hover {
+  width: 100%;
+  height: 600px;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+}
+.recipe-image-container:hover .recipe-image {
+  transform: scale(1);
+}
+.recipe-image-container img.recipe-image {
+  width: 100%;
+  height: 100%;
+  display: block;
+  -o-object-fit: contain;
+     object-fit: contain;
+  border-radius: 15px;
+  transform: scale(1.5);
+  transition: transform 1s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+.flex-md-row .btn-actions {
+  transform: scale(1.1);
+  right: 5%;
+  transition: transform 0.3s ease, right 0.3s ease;
+}
+.flex-md-row .btn-actions .btn-outline-orange {
+  position: relative !important;
+  right: 20%;
+}
+.flex-md-row .btn-actions .btn-follow {
+  position: relative !important;
+  transform: scale(1.1);
+  color: #6c757d;
+  border-color: #6c757d;
+  right: 20%;
+}
+.flex-md-row .btn-actions .btn-follow:hover {
+  background-color: darkorange;
+  border-color: darkorange;
+  color: white;
+}
+
+.chef-tips {
+  background-color: rgba(253, 126, 20, 0.08);
+  border-left: 4px solid #fd7e14;
+}
+
+.list-group-item {
+  border-color: rgba(253, 126, 20, 0.1);
+  transition: background-color 0.2s ease;
+}
+.list-group-item.bg-orange-10:hover {
+  background-color: rgba(253, 126, 20, 0.5);
+}
+
+.report-comment-btn {
+  width: 3%;
+  height: 30%;
+}
+
+.btn-report-recipe, .report-comment-btn {
+  font-size: 0.9rem;
+  padding: 0.375rem 0.75rem;
+  border: 1px solid #dc3545;
+  color: #dc3545;
+  background-color: transparent;
+  opacity: 0.7;
+  transition: all 0.2s ease-in-out;
+}
+.btn-report-recipe:hover, .btn-report-recipe:focus, .report-comment-btn:hover, .report-comment-btn:focus {
+  background-color: #dc3545;
+  color: white;
+  border-color: #dc3545;
+  opacity: 1;
+}
+.btn-report-recipe:hover .bi-flag-fill, .btn-report-recipe:focus .bi-flag-fill, .report-comment-btn:hover .bi-flag-fill, .report-comment-btn:focus .bi-flag-fill {
+  color: white;
+}
+.btn-report-recipe .bi-flag-fill, .report-comment-btn .bi-flag-fill {
+  color: #dc3545;
+}
+
+.recipe-header-actions {
+  position: relative !important;
+}
+.recipe-header-actions .bi-bookmark {
+  display: block;
+}
+.recipe-header-actions .bi-bookmark-fill {
+  display: none;
+}
+.recipe-header-actions button.btn {
+  margin-right: 5px;
+}
+.recipe-header-actions button.btn:hover .bi-bookmark, .recipe-header-actions button.btn.favorito .bi-bookmark {
+  display: none;
+}
+.recipe-header-actions button.btn:hover .bi-bookmark-fill, .recipe-header-actions button.btn.favorito .bi-bookmark-fill {
+  display: block;
+}
+
+.recipe-action-buttons {
+  scale: 1.2;
+  right: 10%;
+}
+.recipe-action-buttons .btn {
+  padding: 0.375rem 0.75rem;
+  font-size: 0.9rem;
+}
+.recipe-action-buttons .btn-delete-recipe {
+  color: #dc3545;
+  border-color: #dc3545;
+}
+.recipe-action-buttons .btn-delete-recipe:hover {
+  background-color: #dc3545;
+  border-color: rgb(167.4810126582, 29.0189873418, 42.2848101266);
+  color: white;
+}
+
+.recipe-author-link {
+  cursor: pointer;
+}
+
+.btn-like-recipe {
+  font-size: 1.5rem;
+  color: #dc3545;
+  padding: 0.25rem 0.5rem;
+  border: none;
+}
+.btn-like-recipe:hover, .btn-like-recipe:focus {
+  transform: scale(1.1);
+}
+.btn-like-recipe.liked .bi-suit-heart-fill {
+  display: inline-block;
+}
+.btn-like-recipe.liked .bi-suit-heart {
+  display: none;
+}
+.btn-like-recipe:not(.liked) .bi-suit-heart-fill {
+  display: none;
+}
+.btn-like-recipe:not(.liked) .bi-suit-heart {
+  display: inline-block;
+}
+
+.comment-item .comment-content {
+  white-space: pre-wrap;
+}
+
+.delete-comment-btn {
+  width: 3%;
+  height: 30%;
+  font-size: 0.9rem;
+  padding: 0.375rem 0.75rem;
+  border: 1px solid #dc3545;
+  color: #dc3545;
+  background-color: transparent;
+  opacity: 0.7;
+  transition: all 0.2s ease-in-out;
+}
+.delete-comment-btn:hover, .delete-comment-btn:focus {
+  background-color: #dc3545;
+  color: white;
+  border-color: #dc3545;
+  opacity: 1;
+}
+.delete-comment-btn:hover .bi-trash, .delete-comment-btn:focus .bi-trash {
+  color: white;
+}
+
+@media (max-width: 768px) {
+  .recipe-image-container {
+    max-height: 500px;
+    -o-object-fit: cover;
+       object-fit: cover;
+    width: 100% !important;
+    height: 300px !important;
+  }
+  .recipe-image-container:hover {
+    height: 300px !important;
+  }
+  .recipe-image-container .recipe-image {
+    transform: scale(1) !important;
+  }
+}
+@media (max-width: 576px) {
+  .card-header .d-flex {
+    flex-direction: column;
+    align-items: flex-start !important;
+  }
+  .card-header .d-flex .recipe-header-actions {
+    position: absolute;
+    align-self: flex-end;
+    margin-top: 0.5rem;
+  }
+  .card-body .d-flex.flex-md-row {
+    flex-direction: column !important;
+  }
+  .card-body .d-flex.flex-md-row .btn-actions {
+    right: 0 !important;
+    transform: scale(1) !important;
+    margin-top: 1rem;
+    width: 100%;
+    display: flex;
+    gap: 10px;
+  }
+  .card-body .d-flex.flex-md-row .btn-actions .btn, .card-body .d-flex.flex-md-row .btn-actions .btn-outline-orange {
+    right: 0 !important;
+    flex: 1;
+  }
+  .delete-comment-btn, .report-comment-btn {
+    width: 7%;
+  }
+  .bi-trash-fill, .bi-pencil-square {
+    scale: 1.3;
+  }
+  .recipe-action-buttons {
+    right: 0 !important;
+    scale: 1 !important;
+    width: 100%;
+    display: flex;
+    gap: 5px;
+  }
+  .recipe-action-buttons .btn {
+    flex: 1;
+  }
+}/*# sourceMappingURL=recipe.css.map */

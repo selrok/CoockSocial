@@ -1,0 +1,80 @@
+// Variables
+$orange: #fd7e14;
+$primary: #0d6efd;
+$light: #f8f9fa;
+
+.navbar {
+    .notification-dropdown {
+        position: static; // Importante para el posicionamiento en móviles
+
+        .dropdown-menu {
+            min-width: 320px;
+            max-height: 70vh;
+            overflow-y: auto;
+            
+            // Estilos para móviles
+            @media (max-width: 767.98px) {
+                position: fixed;
+                right: 10px;
+                left: auto;
+                width: calc(100vw - 20px);
+                max-width: 400px;
+                top: 60px; // Ajusta según la altura de tu navbar
+                transform: none !important;
+            }
+
+            .dropdown-item {
+                white-space: normal;
+                border-bottom: 1px solid rgba(0,0,0,0.05);
+                padding: 0.75rem 1rem;
+                display: flex;
+                align-items: flex-start;
+
+                &:hover, &:focus {
+                    background-color: $light;
+                }
+
+                .notification-icon {
+                    margin-right: 0.75rem;
+                    font-size: 1.25rem;
+                    flex-shrink: 0;
+                }
+
+                .notification-content {
+                    flex-grow: 1;
+
+                    .notification-title {
+                        font-weight: 500;
+                        margin-bottom: 0.25rem;
+                    }
+
+                    .notification-message {
+                        font-size: 0.875rem;
+                        color: #6c757d;
+                    }
+                }
+
+                .unread-indicator {
+                    width: 8px;
+                    height: 8px;
+                    background-color: $primary;
+                    border-radius: 50%;
+                    flex-shrink: 0;
+                    margin-left: 0.5rem;
+                    margin-top: 0.5rem;
+                }
+            }
+
+            .empty-notifications {
+                padding: 1.5rem;
+                text-align: center;
+                color: #6c757d;
+            }
+        }
+    }
+
+    #notification-badge {
+        font-size: 0.65em;
+        padding: 0.3em 0.5em;
+    }
+}

@@ -1,0 +1,121 @@
+/* Variables */
+:root {
+    --orange: #fd7e14;
+    --orange-light: #fff7ed;
+    --orange-dark: #e67312;
+  }
+  
+  /* Estilos base */
+  body {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    background: linear-gradient(to bottom, var(--orange-light), white);
+    min-height: 100vh;
+  }
+  
+  /* Utilidades */
+  .bg-orange-light {
+    background-color: var(--orange-light);
+  }
+  
+  .text-orange {
+    color: var(--orange);
+  }
+  
+  .btn-orange {
+    background-color: var(--orange);
+    color: white;
+    border-color: var(--orange);
+  }
+  .btn-orange:hover, .btn-orange:focus {
+    background-color: var(--orange-dark);
+    border-color: var(--orange-dark);
+    color: white;
+  }
+  
+  /* Componentes */
+  .avatar {
+    width: 150px;
+    height: 150px;
+    object-fit: cover;
+    border: 3px solid white;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  }
+  
+  .nav-tabs {
+    .nav-link {
+        font-weight: 500; color: #495057;
+        i { margin-right: 0.3rem; }
+        &.active { color: var(--orange); border-bottom: 3px solid var(--orange); background-color: #fff; }
+        &:hover:not(.active) { border-color: #e9ecef #e9ecef #dee2e6; }
+    }
+  }
+  
+  .recipe-card {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    height: 100%; // Asegura que todas las cards en una fila tengan la misma altura
+    display: flex; // Para que el card-footer se alinee abajo
+    flex-direction: column;
+    
+    &:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+    }
+    
+    .card-img-top {
+      height: 200px;
+      object-fit: cover;
+    }
+
+    .card-body {
+        flex-grow: 1; // Permite que el body ocupe el espacio disponible
+        display: flex;
+        flex-direction: column;
+    }
+
+    .card-footer {
+        background-color: transparent; // O #fff si prefieres fondo blanco
+        border-top: 1px solid #eee; // Un separador sutil
+        margin-top: auto; // Empuja el footer hacia abajo
+    }
+    
+    .likes-count { 
+      color: #dc3545; // Rojo para el corazón
+    }
+
+    //Distintivo de visibilidad para recetas publicadas por el usuario
+    .visibility-badge {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        font-size: 0.75em;
+        padding: 0.3em 0.6em;
+        z-index: 1; // Para estar sobre la imagen
+
+        &.is-public {
+            background-color: rgba(var(--bs-success-rgb), 0.8) !important; // Verde con opacidad
+            color: white;
+        }
+        &.is-private {
+            background-color: rgba(var(--bs-secondary-rgb), 0.8) !important; // Gris con opacidad
+            color: white;
+        }
+        i { margin-right: 0.25em;}
+    }
+}
+  
+  /* Responsive */
+  @media (max-width: 767.98px) {
+    .avatar {
+      width: 120px;
+      height: 120px;
+    }
+    
+    .profile-actions {
+      flex-direction: column;
+      gap: 0.5rem;
+      
+      .btn {
+        width: 100%;
+      }
+    }
+  }

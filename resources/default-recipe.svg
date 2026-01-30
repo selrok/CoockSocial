@@ -1,0 +1,59 @@
+
+<svg xmlns="http://www.w3.org/2000/svg" width="90%" height="400" viewBox="0 0 1000 400" preserveAspectRatio="xMidYMid slice">
+  <!-- Fondo blanco -->
+  <rect width="1000" height="400" fill="#ffffff" />
+
+  <g fill="#1a1a1a">
+    <!-- Línea de base larga que cruza todo el escenario -->
+    <rect x="50" y="280" width="900" height="5" opacity="0.1"/>
+
+    <!-- ==========================================================
+         EXTREMO IZQUIERDO (Se ocultará en móvil)
+         ========================================================== -->
+    <g transform="translate(70, 240) scale(1.8)">
+      <rect x="0" y="4" width="15" height="2" rx="0.5"/> 
+      <rect x="15" y="0" width="55" height="10" rx="1"/> 
+      <rect x="70" y="4" width="15" height="2" rx="0.5"/>
+    </g>
+
+
+    <!-- ==========================================================
+         ZONA CENTRAL (Visible en móvil y escritorio)
+         ========================================================== -->
+    
+    <!-- Elemento Centro-Izquierda: Batidor de varillas -->
+    <g transform="translate(380, 215) scale(1.8) rotate(-10)">
+      <path d="M5 12 C 5 -2 20 -2 20 12 C 20 22 5 22 5 12 Z" fill="none" stroke="#1a1a1a" stroke-width="0.8"/>
+      <path d="M8 12 C 8 4 17 4 17 12" fill="none" stroke="#1a1a1a" stroke-width="0.5"/>
+      <line x1="12.5" y1="3" x2="12.5" y2="21" stroke="#1a1a1a" stroke-width="0.5"/>
+      <rect x="11" y="21" width="3" height="15" rx="0.5"/> <!-- Mango -->
+    </g>
+
+    <!-- Centro: Tu Bol de preparación -->
+    <g transform="translate(455, 210) scale(1.8)">
+      <path d="M0 10 C 0 32 50 32 50 10 Z" /> 
+      <path d="M15 0 Q 18 4 15 8" fill="none" stroke="#1a1a1a" stroke-width="0.8" opacity="0.5"/>
+      <path d="M25 -3 Q 28 2 25 7" fill="none" stroke="#1a1a1a" stroke-width="0.8" opacity="0.5"/>
+      <path d="M35 0 Q 38 4 35 8" fill="none" stroke="#1a1a1a" stroke-width="0.8" opacity="0.5"/>
+    </g>
+
+    <!-- Elemento Centro-Derecha: Cuchara de madera -->
+    <g transform="translate(585, 209) scale(1.8) rotate(10)">
+      <ellipse cx="6" cy="6" rx="6" ry="8" /> <!-- Cabeza cuchara -->
+      <rect x="4.5" y="14" width="3" height="25" rx="1"/> <!-- Mango -->
+    </g>
+
+
+    <!-- ==========================================================
+         EXTREMO DERECHO (Se ocultará en móvil)
+         ========================================================== -->
+    <g transform="translate(800, 250) scale(1.8)">
+      <path d="M0 10 L 45 10 L 45 2 C 45 2 25 0 0 10 Z" /> 
+      <path d="M46 2 H 65 A 2 2 0 0 1 67 4 V 8 A 2 2 0 0 1 65 10 H 46 Z" />
+      <circle cx="52" cy="6" r="0.7" fill="white"/>
+      <circle cx="58" cy="6" r="0.7" fill="white"/>
+      <circle cx="64" cy="6" r="0.7" fill="white"/>
+    </g>
+
+  </g>
+</svg>

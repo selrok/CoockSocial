@@ -1,0 +1,99 @@
+/* Variables */
+:root {
+  --orange: #fd7e14;
+  --orange-light: #fff7ed;
+  --orange-dark: #e67312;
+}
+
+/* Estilos base */
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+/* Utilidades */
+.bg-orange-light {
+  background-color: var(--orange-light);
+}
+
+.text-orange {
+  color: var(--orange);
+}
+textarea{
+  resize: none;
+}
+.btn-orange {
+  background-color: var(--orange);
+  color: white;
+  border-color: var(--orange);
+}
+.btn-orange:hover, .btn-orange:focus {
+  background-color: var(--orange-dark);
+  border-color: var(--orange-dark);
+  color: white;
+}
+
+/* Componentes */
+.card .card-header {
+  padding-bottom: 0;
+}
+
+.form-control:focus, .form-select:focus {
+  border-color: var(--orange);
+  box-shadow: 0 0 0 0.25rem rgba(253, 126, 20, 0.25);
+}
+
+/* NUEVO: Estilo para el form-switch activado */
+.form-check-input:checked {
+  background-color: var(--orange);
+  border-color: var(--orange);
+}
+/* Asegurar que el foco del switch también use el color naranja */
+.form-check-input:focus {
+  border-color: var(--orange-dark); /* Un tono más oscuro para el borde en foco */
+  box-shadow: 0 0 0 0.25rem rgba(253, 126, 20, 0.25); /* Sombra naranja */
+}
+/* Ajuste para que el switch no activado no tome el color de foco naranja si no está activado */
+.form-check-input:not(:checked):focus {
+  border-color: #86b7fe; /* Color de foco por defecto de Bootstrap o el que prefieras */
+  box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25); /* Sombra por defecto de Bootstrap o la que prefieras */
+}
+
+
+.input-group .btn-outline-danger {
+  transition: all 0.2s ease;
+}
+.input-group .btn-outline-danger:hover {
+  background-color: #dc3545;
+  color: white;
+}
+
+.btn-outline-secondary:hover {
+  color: #212529;
+  background-color: #f8f9fa;
+}
+
+/* Validación */
+.was-validated .form-control:invalid,
+.was-validated .form-select:invalid {
+  border-color: #dc3545;
+}
+.was-validated .form-control:invalid:focus,
+.was-validated .form-select:invalid:focus {
+  box-shadow: 0 0 0 0.25rem rgba(220, 53, 69, 0.25);
+}
+
+.was-validated .form-control:valid,
+.was-validated .form-select:valid {
+  border-color: #198754;
+}
+.was-validated .form-control:valid:focus,
+.was-validated .form-select:valid:focus {
+  box-shadow: 0 0 0 0.25rem rgba(25, 135, 84, 0.25);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .card-header h1 {
+      font-size: 1.5rem;
+  }
+}

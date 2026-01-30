@@ -1,0 +1,161 @@
+// index.scss
+
+// Variables
+$orange: #fd7e14;
+$orange-light: #fff7ed;
+$dark: #212529;
+$light: #f8f9fa;
+$blue: #0d6efd; 
+$gray-300: #dee2e6; 
+$gray-500: #adb5bd;
+
+// Estilos base
+body {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+// Utilidades
+.bg-orange-light {
+    background-color: $orange-light;
+}
+.text-orange {
+    color: $orange;
+    transition: color 0.3s ease;
+    &:hover, &:active, &:focus {
+        color: $dark !important;
+        text-decoration: none;
+    }
+}
+.btn-orange {
+    background-color: $orange;
+    color: white;
+    border-color: $orange;
+    &:hover {
+        background-color: darken($orange, 10%);
+        border-color: darken($orange, 10%);
+        color: white;
+    }
+}
+
+// Placeholders de carga
+.placeholder-recipes, .placeholder-chefs {
+    width: 100%;
+    padding: 2rem 0;
+    color: $gray-500;
+}
+
+// Componentes
+.navbar { 
+    top: 10px; // Si quieres que esté un poco despegada, si no, `top:0;` con `sticky-top`
+    .nav-link { font-weight: 500; }
+}
+// Estilos para los selectores de filtro para que tengan un tamaño consistente
+.hero .form-select-lg {
+    font-size: 1rem; // Ajustar si es necesario para que quepan bien
+    padding-top: 0.6rem;
+    padding-bottom: 0.6rem;
+}
+
+.card {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid $gray-300; // Un borde sutil a las cards
+    &:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+    }
+    .card-img-top {
+        height: 200px;
+        object-fit: cover;
+    }
+    .card-body {
+        flex-grow: 1;
+        display: flex;
+        flex-direction: column;
+    }
+    .card-title a.stretched-link:hover { // Para que el título cambie de color al pasar el ratón
+        color: $orange !important;
+    }
+    .card-footer { 
+        background-color: $light; // Un fondo ligeramente diferente para el footer
+        border-top: 1px solid $gray-300;
+        margin-top: auto;
+        padding: 0.75rem 1rem;
+    }
+}
+
+.avatar {
+    width: 60px; // Un poco más grande para chefs
+    height: 60px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.rating { 
+    color: #dc3545; 
+    font-size: 0.9em;
+}
+.badge.bg-light.text-dark { // Para el tiempo
+    font-size: 0.85em;
+}
+
+.nav-tabs {
+    .nav-link {
+        font-weight: 500;
+        color: $dark; 
+        i { margin-right: 0.3rem; }
+        &.active {
+            color: $orange; 
+            border-color: $gray-300 $gray-300 $orange; 
+            border-bottom-width: 3px;
+            background-color: white; // Fondo blanco para la pestaña activa
+        }
+        &:hover:not(.active) {
+            border-color: #e9ecef #e9ecef $gray-300; 
+            background-color: #f8f9fa; // Un ligero hover
+        }
+    }
+}
+
+// Estilos para el slider de tiempo de Bootstrap (form-range)
+#timeMaxSlider {
+    // Personalizar el "thumb" (la bolita)
+    &::-webkit-slider-thumb { background: $orange; }
+    &::-moz-range-thumb { background: $orange; }
+    &::-ms-thumb { background: $orange; }
+
+    // Personalizar el "track" (el riel) si se desea un color específico al pasar
+    // &:active::-webkit-slider-thumb { background: darken($orange, 10%); }
+    // &:active::-moz-range-thumb { background: darken($orange, 10%); }
+}
+
+#timeMaxValueDisplay { // El span que muestra el valor del slider
+    min-width: 100px; // Espacio para "Cualquiera" o "+3 horas"
+    display: inline-block;
+    font-size: 0.9rem;
+}
+
+#sortTimeToggle.form-check-input { 
+    width: 2.75em; // Ligeramente más grande
+    height: 1.4em;
+    margin-top: 0.1em; // Ajuste vertical
+    &:checked {
+        background-color: $orange;
+        border-color: $orange;
+    }
+     &:focus {
+        border-color: rgba($orange, 0.7);
+        box-shadow: 0 0 0 0.25rem rgba($orange, 0.35);
+    }
+}
+
+// Responsive
+@media (max-width: 991px) { // lg breakpoint
+    .hero .col-lg-auto { width: 100%; } 
+    .hero .col-lg { margin-bottom: 0.75rem; } 
+}
+@media (max-width: 768px) {
+    .display-4 { font-size: 2.5rem; }
+}
