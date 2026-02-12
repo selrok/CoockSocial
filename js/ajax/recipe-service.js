@@ -3,12 +3,14 @@
 const RecipeService = {
     /**
      * Obtiene el feed de recetas públicas (para el index).
+     * IMPORTANTE: Enviamos credenciales para que el servidor sepa si seguimos a los autores.
      */
     getAllPublicRecipes: function() {
         return $.ajax({
             url: 'api/get_recipes_feed.php',
             type: 'GET',
-            dataType: 'json'
+            dataType: 'json',
+            xhrFields: { withCredentials: true } 
         });
     },
 
@@ -24,7 +26,7 @@ const RecipeService = {
             type: 'GET',
             data: { id: id },
             dataType: 'json',
-            xhrFields: { withCredentials: true } // Importante para detectar si el usuario dio like o es dueño
+            xhrFields: { withCredentials: true } 
         });
     },
 
@@ -44,8 +46,11 @@ const RecipeService = {
         });
     },
 
+    /**
+     * Métodos duplicados mantenidos por compatibilidad de versiones anteriores en tu código
+     */
     getAllPublicRecipes: function() {
-        return $.ajax({ url: 'api/get_recipes_feed.php', type: 'GET', dataType: 'json' });
+        return $.ajax({ url: 'api/get_recipes_feed.php', type: 'GET', dataType: 'json', xhrFields: { withCredentials: true } });
     },
     createRecipe: function(recipeData) {
         return $.ajax({ url: 'api/formReceta.php', type: 'POST', contentType: 'application/json', data: JSON.stringify(recipeData), dataType: 'json', xhrFields: { withCredentials: true } });
@@ -67,7 +72,7 @@ const RecipeService = {
         console.log("RecipeService: Eliminando receta ID:", recipeId);
         return $.ajax({
             url: 'api/recipes.php',
-            type: 'POST', // Usamos POST para compatibilidad, enviando acción
+            type: 'POST', 
             contentType: 'application/json',
             data: JSON.stringify({ 
                 action: 'delete', 

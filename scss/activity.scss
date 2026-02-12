@@ -1,0 +1,78 @@
+// TFG/scss/activity.scss
+
+// --- Variables ---
+$orange-primary: #fd7e14;
+$orange-hover: #e66a00;
+$gray-text: #495057;
+$bg-light: #f8f9fa;
+
+// --- Estilos de la Página de Actividad ---
+
+.activity-card {
+    min-height: 500px;
+    border-radius: 12px;
+    overflow: hidden; // Para que el header y body respeten el border-radius
+}
+
+// Estilos para los Tabs (Pills)
+.nav-pills {
+    .nav-link {
+        color: $gray-text;
+        font-weight: 500;
+        transition: all 0.3s ease;
+        padding: 1rem;
+
+        &:hover {
+            color: $orange-primary;
+        }
+
+        &.active {
+            background-color: $orange-primary !important;
+            color: #fff !important;
+        }
+    }
+}
+
+// Contenedores de Listas
+#notifications-container,
+#following-container,
+#followers-container {
+    .list-group-item {
+        border-left: 0;
+        border-right: 0;
+        transition: background-color 0.2s ease;
+
+        &:first-child {
+            border-top: 0;
+        }
+
+        &.bg-light {
+            background-color: rgba($orange-primary, 0.05) !important;
+        }
+
+        &:hover {
+            background-color: mix(#fff, $orange-primary, 95%);
+        }
+    }
+}
+
+// Utilidades de color (para spinners y links inyectados por JS)
+.text-orange {
+    color: $orange-primary !important;
+}
+
+.hover-orange:hover {
+    color: $orange-primary !important;
+}
+
+// Ajustes de iconos en notificaciones
+.fa-bell-slash, .fa-user-friends {
+    opacity: 0.3;
+}
+
+// Animación suave para la carga de contenido
+.tab-pane {
+    &.fade {
+        transition: opacity 0.15s linear;
+    }
+}

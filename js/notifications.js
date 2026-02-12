@@ -1,209 +1,240 @@
-// Variables jQuery para elementos del Navbar (cacheadas en document.ready)
+// TFG/js/notifications.js
+
 let $navBarUserAuthButtons = null;
 let $navBarUserProfileButtons = null;
 let $navBarAdminLinkContainer = null;
 let $navBarMainLinksUl = null;
 
-// Almacenamiento global del estado de la sesión, accesible por otros scripts después del evento.
-window.globalSessionData = { 
-    is_logged_in: false, 
-    data: null, 
-    error: null, 
-    checked_once: false // Bandera para indicar si el chequeo inicial ya se hizo
-};
+window.globalSessionData = { is_logged_in: false, data: null, checked_once: false };
 
-// Función para actualizar la UI del Navbar según el estado de sesión
+/**
+ * Actualiza el Navbar según el estado de la sesión
+ */
 function updateLoginStatusUIGlobal(currentSessionState) {
-
-    if (!$navBarUserAuthButtons || !$navBarUserProfileButtons || !$navBarAdminLinkContainer || !$navBarMainLinksUl ||
-        !$navBarUserAuthButtons.length || !$navBarUserProfileButtons.length || 
-        !$navBarAdminLinkContainer.length || !$navBarMainLinksUl.length) {
-        return;
-    }
-
-    // Reset: ocultar todos los elementos condicionales primero
+    if (!$navBarUserAuthButtons) return;
+    
     $navBarUserAuthButtons.addClass('d-none');
     $navBarUserProfileButtons.addClass('d-none');
     $navBarAdminLinkContainer.addClass('d-none');
     $navBarMainLinksUl.addClass('d-none'); 
 
-    if (currentSessionState && currentSessionState.is_logged_in && currentSessionState.data && currentSessionState.data.user_id) {
+    if (currentSessionState && currentSessionState.is_logged_in && currentSessionState.data) {
         const userData = currentSessionState.data;
-        
         $navBarUserProfileButtons.removeClass('d-none'); 
-        
-        let mainLinksUlShouldBeVisible = false; 
-        // Mostrar "Administrar" si id_rol NO es 3 (Usuario)
-        if (userData.id_rol && parseInt(userData.id_rol, 10) !== 3) { 
+        if (userData.id_rol && parseInt(userData.id_rol) !== 3) { 
             $navBarAdminLinkContainer.removeClass('d-none');
-            mainLinksUlShouldBeVisible = true;               
-        }
-        // Aquí podrías añadir más lógica si #nav-main-links contiene otros elementos para usuarios logueados
-        // if (algunOtroLinkParaLogueadosEsVisible) { mainLinksUlShouldBeVisible = true; }
-
-        if (mainLinksUlShouldBeVisible) {
             $navBarMainLinksUl.removeClass('d-none');
-        } else {
-            // Si el UL de la izquierda solo contenía el link de admin y no es admin, lo dejamos oculto
-            $navBarMainLinksUl.addClass('d-none');
         }
-
     } else {
         $navBarUserAuthButtons.removeClass('d-none'); 
     }
 }
 
-// Definición del Módulo de Notificaciones (para la campanita)
+/**
+ * Módulo de Notificaciones - Optimizado para CoockSocial
+ */
 const NotificationsModule = {
-    notificationsDropdown: null, notificationsList: null, notificationBadge: null, currentUserData: null,
+    $list: null, 
+    $badge: null,
+    unreadCount: 0,
+    
     init: function(userData) {
-        if(!userData||!userData.user_id){ this.clearNotificationsUI(); return; }
-        this.currentUserData = userData;
-        this.notificationsDropdown = $('#notificationsDropdown');
-        this.notificationsList = $('#notificationsList');
-        this.notificationBadge = $('#notification-badge');
-        if(!this.notificationsDropdown.length||!this.notificationsList.length||!this.notificationBadge.length){;
-            return; }
-        this.loadUserNotifications();
-        const self = this;
-        this.notificationsDropdown.on('show.bs.dropdown', function(){ if(self.notificationBadge.length) self.notificationBadge.text('0').hide(); });
+        if(!userData) return;
+        this.$list = $('#notificationsList');
+        this.$badge = $('#notification-badge');
+        this.load();
+        this.setupEvents();
     },
-    loadUserNotifications: function(){ const mockN = this.getMockNotifications(); this.renderNotifications(mockN); },
-    renderNotifications: function(notifications){
-        if(!this.notificationsList||!this.notificationsList.length) return;
-        this.notificationsList.empty();
-        if(!notifications||notifications.length===0){ this.notificationsList.append('<li class="dropdown-item text-center text-muted p-3 mb-0">No hay notificaciones nuevas.</li>'); if(this.notificationBadge.length)this.notificationBadge.hide(); return; }
-        let unreadCount = 0; const self = this;
-        notifications.forEach(n=>{ const isUnread=!n.read; if(isUnread)unreadCount++; const li=$(`<li><a class="dropdown-item notification-item ${isUnread?'unread':''}" href="${n.link||'#'}"><div class="d-flex align-items-start"><div class="notification-icon text-${self.getNotificationColor(n.type)} me-2"><i class="${self.getNotificationIcon(n.type)} fa-fw"></i></div><div class="notification-content flex-grow-1"><strong class="notification-title">${self.escapeHTML(n.title)}</strong><div class="notification-message small text-muted">${self.escapeHTML(n.message)}</div></div>${isUnread?'<span class="unread-dot ms-auto align-self-center"><i class="fas fa-circle text-primary fa-xs"></i></span>':''}</div></a></li>`); this.notificationsList.append(li); });
-        if(this.notificationBadge.length){ unreadCount > 0 ? this.notificationBadge.text(unreadCount > 99 ? '99+' : unreadCount).show() : this.notificationBadge.hide(); }
-    },
-    clearNotificationsUI: function(){ if(this.notificationsList&&this.notificationsList.length){this.notificationsList.empty().append('<li class="dropdown-item text-center text-muted p-3 mb-0">Inicia sesión para ver notificaciones.</li>');} if(this.notificationBadge&&this.notificationBadge.length)this.notificationBadge.hide(); },
-    getNotificationIcon: function(type){const icons={'like':'fa-heart','comment':'fa-comment','follow':'fa-user-plus','admin_message':'fa-shield-alt','system':'fa-info-circle'}; return `fas ${icons[type]||'fa-bell'}`;},
-    getNotificationColor: function(type){const colors={'like':'danger','comment':'primary','follow':'success','admin_message':'warning','system':'info'}; return colors[type]||'secondary';},
-    getMockNotifications: function(){return[{id:1,type:'comment',title:'Bienvenido a CookSocial!',message:'Explora y comparte tus recetas.',read:false,link:'#'},{id:2,type:'system',title:'Actualización',message:'Hemos mejorado la búsqueda.',read:true,link:'#'}];},
-    escapeHTML: function(str) { if (str == null) return ''; return $('<div></div>').text(String(str)).html(); }
-};
-// --- CÓDIGO PRINCIPAL DE notifications.js (Se ejecuta en $(document).ready) ---
-$(document).ready(function() {
 
-    // Cachear selectores del Navbar
+    /**
+     * Delegación de eventos para marcar como leída al hacer click
+     */
+    setupEvents: function() {
+        this.$list.off('click', '.noti-item').on('click', '.noti-item', (e) => {
+            const $item = $(e.currentTarget);
+            const id = $item.data('id');
+            const estaLeida = $item.data('status') == 1;
+
+            if (!estaLeida) {
+                if (typeof window.NotificationService !== 'undefined') {
+                    window.NotificationService.markOneAsRead(id).done((res) => {
+                        if (res.success) {
+                            this.markItemAsReadUI($item);
+                        }
+                    });
+                }
+            }
+        });
+    },
+
+    /**
+     * Actualización visual inmediata sin recarga
+     */
+    markItemAsReadUI: function($item) {
+        $item.removeClass('bg-light').data('status', 1);
+        $item.find('.bi-circle-fill').fadeOut(200, function() { $(this).remove(); });
+        
+        if (this.unreadCount > 0) {
+            this.unreadCount--;
+            this.updateBadgeUI();
+        }
+    },
+
+    updateBadgeUI: function() {
+        if (this.unreadCount > 0) {
+            this.$badge.text(this.unreadCount > 99 ? '99+' : this.unreadCount).show();
+        } else {
+            this.$badge.hide().text('0');
+        }
+    },
+
+    load: function() {
+        if (typeof window.NotificationService === 'undefined') return;
+        window.NotificationService.getNotifications().done((res) => {
+            if (res.success) this.render(res.data);
+        });
+    },
+
+    /**
+     * Renderizado optimizado con Pie de página Sticky
+     */
+    render: function(notifications) {
+        this.$list.empty();
+        this.unreadCount = 0;
+
+        // 1. Si no hay notificaciones, mensaje amigable
+        if (!notifications || notifications.length === 0) {
+            this.$list.append('<li><p class="text-center text-muted p-4 mb-0 small">No tienes notificaciones nuevas</p></li>');
+        } else {
+            // 2. Mapeo de items
+            const itemsHtml = notifications.map(n => {
+                const isUnread = (n.leida == 0);
+                if (isUnread) this.unreadCount++;
+
+                const config = this.getNotificationConfig(n);
+                
+                return `
+                    <li>
+                        <a class="dropdown-item py-2 border-bottom noti-item ${isUnread ? 'bg-light' : ''}" 
+                           href="${config.link}" 
+                           data-id="${n.id}" 
+                           data-status="${n.leida}">
+                            <div class="d-flex align-items-center">
+                                <div class="me-3 fs-5 ${config.color}">
+                                    <i class="bi ${config.icon}"></i>
+                                </div>
+                                <div class="flex-grow-1 overflow-hidden" style="max-width: 210px;">
+                                    <p class="mb-0 small text-dark" style="white-space: normal; line-height: 1.2;">
+                                        ${config.text}
+                                    </p>
+                                </div>
+                                ${isUnread ? '<i class="bi bi-circle-fill text-primary ms-2" style="font-size: 0.5rem;"></i>' : ''}
+                            </div>
+                        </a>
+                    </li>`;
+            });
+            this.$list.append(itemsHtml.join(''));
+        }
+
+        // --- 3. INYECCIÓN DEL PIE DE PÁGINA "STICKY" ---
+        // Se coloca al final pero gracias al CSS se mantendrá pegado abajo si hay scroll.
+        this.$list.append(`
+            <li class="sticky-bottom bg-white border-top shadow-sm" style="position: sticky; bottom: 0; z-index: 10;">
+                <a class="dropdown-item text-center small text-orange fw-bold py-2" href="activity.html">
+                    Ver toda la actividad <i class="bi bi-arrow-right ms-1"></i>
+                </a>
+            </li>
+        `);
+
+        this.updateBadgeUI();
+    },
+
+    /**
+     * Lógica de configuración por tipo
+     */
+    getNotificationConfig: function(n) {
+        const emisor = n.nombre_emisor || 'Alguien';
+        const receta = n.titulo_receta;
+        
+        switch(n.tipo) {
+            case 'like': 
+                return {
+                    icon: 'bi-suit-heart-fill', color: 'text-danger',
+                    text: `A <b>${emisor}</b><br> le gusta tu receta <i>${receta || 'eliminada'}</i>`,
+                    link: receta ? `recipe.html?id=${n.id_origen_contenido}` : '#'
+                };
+            case 'comentario': 
+                return {
+                    icon: 'bi-chat-dots-fill', color: 'text-primary',
+                    text: `<b>${emisor}</b> comentó en:<br> <i>${receta || 'una receta eliminada'}</i>`,
+                    link: `recipe.html?id=${n.id_origen_contenido}#comment-section`
+                };
+            case 'seguidor': 
+                return {
+                    icon: 'bi-person-plus-fill', color: 'text-success',
+                    text: `<b>${emisor}</b> <br>ha empezado a seguirte`,
+                    link: `profile.html?userId=${n.id_origen_contenido}`
+                };
+            case 'baneo_receta': 
+                return {
+                    icon: 'bi-info-circle-fill', color: 'text-warning',
+                    text: `Tu receta <b>${receta || 'fue eliminada'}</b><br> por infringir las normas`,
+                    link: '#' 
+                };
+            case 'baneo_comentario': 
+                return {
+                    icon: 'bi-info-square-fill', color: 'text-warning',
+                    text: `Un comentario tuyo ha sido eliminado <br>en <i>${receta || 'el contenido'}</i>`,
+                    link: `recipe.html?id=${n.id_origen_contenido}`
+                };
+            default: 
+                return { icon: 'bi-bell', color: 'text-secondary', text: 'Novedades en tu cuenta', link: '#' };
+        }
+    }
+};
+
+$(document).ready(function() {
     $navBarUserAuthButtons = $('#user-auth-buttons');
     $navBarUserProfileButtons = $('#user-profile-buttons');
     $navBarAdminLinkContainer = $('#nav-admin-link');
     $navBarMainLinksUl = $('#nav-main-links');
 
-    // Verificar que los elementos críticos del Navbar existan
-    if (!$navBarUserAuthButtons.length || !$navBarUserProfileButtons.length || 
-        !$navBarAdminLinkContainer.length || !$navBarMainLinksUl.length) {
-        console.error("notifications.js: Error crítico - Faltan elementos del Navbar en el DOM. La UI de sesión y notificaciones no funcionará correctamente.");
-        window.globalSessionData = { is_logged_in: false, data: null, error: "Navbar elements missing", checked: true };
-        // Disparar evento para que otras páginas (como guardianes) sepan que el chequeo falló
-        $(document).trigger('sessionStatusChecked', [window.globalSessionData]);
-        return; 
-    }
-    
-    // Establecer UI inicial como "no logueado" (evita parpadeo)
-    updateLoginStatusUIGlobal({ is_logged_in: false, data: null });
-    NotificationsModule.clearNotificationsUI();
-
-    // Verificar AuthService
-    if (typeof AuthService === 'undefined' || typeof AuthService.checkSession !== 'function') {
-        console.error("notifications.js: AuthService.checkSession no disponible. Imposible verificar sesión.");
-        window.globalSessionData = { is_logged_in: false, data: null, error: "AuthService missing", checked: true };
-        updateLoginStatusUIGlobal(window.globalSessionData); // Reflejar estado de error en UI
-        NotificationsModule.clearNotificationsUI();
-        $(document).trigger('sessionStatusChecked', [window.globalSessionData]);
-        return; 
-    }
-
-    // Realizar la llamada para verificar la sesión
-    AuthService.checkSession()
-        .done(function(sessionResponse) {
-            // Actualizar el estado global de la sesión. sessionResponse ya tiene is_logged_in, data, etc.
-            window.globalSessionData = { ...sessionResponse, checked: true }; 
-            
-            updateLoginStatusUIGlobal(sessionResponse); // Actualizar la UI del navbar
-
-            if (sessionResponse && sessionResponse.is_logged_in && sessionResponse.data) {
-                NotificationsModule.init(sessionResponse.data); // Iniciar módulo de notificaciones si está logueado
-            } else {
-                NotificationsModule.clearNotificationsUI(); // Limpiar UI de notificaciones si no está logueado
-            }
-        })
-        .fail(function(jqXHR) {
-            console.error("notifications.js (checkSession.fail): Error AJAX al verificar sesión:", jqXHR.status, jqXHR.responseText);
-            window.globalSessionData = { success: false, is_logged_in: false, message: 'Error al verificar estado de sesión.', data: null, error: jqXHR, checked: true };
-            updateLoginStatusUIGlobal(window.globalSessionData); // Mostrar UI como no logueado
-            NotificationsModule.clearNotificationsUI();
-        })
-        .always(function() {
-            // Disparar el evento global para que otros scripts sepan que la información de sesión está lista (o falló).
-            $(document).trigger('sessionStatusChecked', [window.globalSessionData]);
+    if (typeof AuthService !== 'undefined') {
+        AuthService.checkSession().done(res => {
+            window.globalSessionData = { ...res, checked: true };
+            updateLoginStatusUIGlobal(res);
+            if (res.is_logged_in) NotificationsModule.init(res.data);
+            $(document).trigger('sessionStatusChecked', [res]);
         });
-
-    // Manejo del Botón de Logout (asegúrate que tu botón de logout tenga id="logoutButton")
-    const $logoutButton = $('#logoutButton');
-    if ($logoutButton.length) {
-        $logoutButton.on('click', function(e) {
-            e.preventDefault();
-            if (AuthService && AuthService.logout) {
-                AuthService.logout()
-                    .done(function(logoutResponse) {
-                        const loggedOutState = { is_logged_in: false, data: null, checked: true, message: logoutResponse.message || "Sesión cerrada" };
-                        window.globalSessionData = loggedOutState;
-
-                        updateLoginStatusUIGlobal(loggedOutState); // Actualizar UI del navbar
-                        NotificationsModule.clearNotificationsUI(); // Limpiar notificaciones
-                        
-                        // Informar a otras partes de la aplicación que el estado de la sesión ha cambiado
-                        $(document).trigger('sessionStatusChecked', [loggedOutState]); 
-                        
-                        // Redirigir a index.html si no estamos en una página pública principal, para asegurar un estado limpio.
-                        const currentPath = window.location.pathname.toLowerCase();
-                        const isNonEssentialPublic = !currentPath.endsWith('/') && 
-                                                   !currentPath.endsWith('index.html') && 
-                                                   !currentPath.endsWith('logreg.html') && 
-                                                   !currentPath.endsWith('help.html') &&
-                                                   !currentPath.endsWith('/tfg/') && 
-                                                   !currentPath.endsWith('/tfg/index.html') && 
-                                                   !currentPath.endsWith('/tfg/logreg.html') && 
-                                                   !currentPath.endsWith('/tfg/help.html');
-                        if (isNonEssentialPublic) {
-                            window.location.href = 'index.html'; // O './index.html' dependiendo de tu estructura base
-                        }
-                    })
-                    .fail(function(jqXHR_logout) {
-                        console.error("notifications.js: Falló la llamada AJAX de Logout:", jqXHR_logout.status, jqXHR_logout.responseText);
-                        // Considerar mostrar un mensaje de error no intrusivo al usuario.
-                    });
-            } else {
-                console.error("notifications.js: AuthService.logout no está disponible.");
-            }
-        });
-    } else {
-        // Es normal si el botón no está en la página actual (ej. logReg.html).
-        // console.warn("notifications.js: Botón de logout ('#logoutButton') no encontrado en el DOM de esta página.");
     }
+
+    $('#logoutButton').on('click', function(e) {
+        e.preventDefault();
+        if(typeof AuthService !== 'undefined') {
+            AuthService.logout().done(() => window.location.href = 'index.html');
+        }
+    });
 });
-function formatRecipeDuration(totalMinutes) {
-    const minutes = parseInt(totalMinutes, 10);
-    
-    if (isNaN(minutes) || minutes <= 0) return '0 min';
-    
-    const h = Math.floor(minutes / 60);
-    const m = minutes % 60;
-    
-    let timeString = "";
-    
-    if (h > 0) {
-        timeString += `${h}h`;
+
+function escapeHTML(str) { return str ? $('<div>').text(str).html() : ''; }
+
+window.NotificationHelper = {
+    send: function(receptorId, tipo, contenidoId) {
+        if (typeof NotificationService !== 'undefined') {
+            return window.NotificationService.create({
+                receptor_id: receptorId,
+                tipo: tipo,
+                contenido_id: contenidoId
+            });
+        }
+    },
+    remove: function(receptorId, tipo, contenidoId) {
+        if (typeof NotificationService !== 'undefined') {
+            return window.NotificationService.delete({
+                receptor_id: receptorId,
+                tipo: tipo,
+                contenido_id: contenidoId
+            });
+        }
     }
-    
-    if (m > 0) {
-        // Añade un espacio si ya hay horas
-        if (h > 0) timeString += " ";
-        timeString += `${m}min`;
-    }
-    
-    return timeString;
-}
+};

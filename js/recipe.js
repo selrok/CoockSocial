@@ -21,11 +21,10 @@ $(document).ready(function() {
     let confirmDeleteRecipeModalInstance = null;
     let confirmReportCommentModalInstance = null;
     let confirmReportRecipeModalInstance = null;
-    let confirmDeleteCommentModalInstance = null; // Nuevo modal
+    let confirmDeleteCommentModalInstance = null; 
 
     // Inicializar modales
     try {
-        // Nota: Bootstrap 5 requiere el elemento DOM nativo, por eso usamos [0] o .get(0) con jQuery
         if ($('#confirmDeleteRecipeModal').length) {
             confirmDeleteRecipeModalInstance = new bootstrap.Modal($('#confirmDeleteRecipeModal')[0]);
         }
@@ -84,7 +83,6 @@ $(document).ready(function() {
                 if (response && response.success && response.data) {
                     currentRecipeData = response.data;
                     renderRecipe(currentRecipeData);
-                    // Una vez tenemos la receta, cargamos sus comentarios
                     loadComments(currentRecipeData.id);
                 } else {
                     $recipeDetailContainer.html(`<div class="alert alert-warning text-center">${escapeHTML(response.message || 'Receta no encontrada.')}</div>`);
@@ -97,7 +95,6 @@ $(document).ready(function() {
 
     // 5. RENDERIZADO DE LA RECETA
     function renderRecipe(data) {
-        
         let publishDateFormatted = new Date(data.fecha_publicacion).toLocaleDateString('es-ES', { 
             year: 'numeric', month: 'long', day: 'numeric' 
         });
@@ -106,18 +103,12 @@ $(document).ready(function() {
         let prepTimeFormatted = formatRecipeDuration(data.tiempo_preparacion_min);
         let followBtnHTML = '';
 
-        // Permisos
         let isAuthor = currentUser && (parseInt(currentUser.user_id) === parseInt(data.id_usuario));
         let isAdmin = currentUser && (currentUser.id_rol == 1 || currentUser.id_rol == 2);
         
-        // Solo mostrar si hay usuario logueado Y no es el propio autor
         if (currentUser && !isAuthor) {
-            // Texto y Clase según estado
             let isFollowing = data.isFollowingAuthor === true || data.isFollowingAuthor === 1;
-
             let followText = isFollowing ? 'Seguido' : 'Seguir';
-
-            //Clases segun estado Seguir o Seguido
             let followClass = isFollowing ? 'btn-follow' : 'btn-outline-orange';
 
             followBtnHTML = `
@@ -126,7 +117,6 @@ $(document).ready(function() {
                 </button>`;
         }
 
-        // Botones de acción para el autor/admin
         let authorActionButtonsHTML = '';
         if (isAuthor) {
             authorActionButtonsHTML = `
@@ -148,13 +138,10 @@ $(document).ready(function() {
         }
         
         let user_id = data.id_usuario;
-        
-        // Delegación de evento para redirección al perfil
         $recipeDetailContainer.off('click', '#authorLink').on('click', '#authorLink', function(){
             redirectProfile(user_id);
         });
 
-        // HTML Principal
         const htmlContent = `
             <div class="card shadow-lg border-0 overflow-hidden">
                 <div class="card-header bg-white border-0 pb-0">
@@ -192,7 +179,6 @@ $(document).ready(function() {
                         <div class="d-flex align-items-center gap-2 btn-actions">
                             ${(currentUser && !isAuthor) ? `
                             ${followBtnHTML}` : ''}
-                            
                             ${authorActionButtonsHTML} 
                         </div>
                     </div>
@@ -209,6 +195,14 @@ $(document).ready(function() {
                         <div class="d-flex align-items-center">
                             <i class="bi bi-fire me-2 fs-5 text-orange"></i>
                             <span>Dificultad: ${escapeHTML(data.dificultad)}</span>
+                        </div>
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-tag me-2 fs-5 text-orange"></i>
+                            <span>Categoría: ${escapeHTML(data.nombre_categoria || data.categoria)}</span>
+                        </div>
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-apple me-2 fs-5 text-orange"></i>
+                            <span>Dieta: ${escapeHTML(data.nombre_dieta || data.dieta)}</span>
                         </div>
                     </div>
 
@@ -249,217 +243,135 @@ $(document).ready(function() {
         
         $recipeDetailContainer.html(htmlContent);
         $commentsSection.show();
-        
-        // Inicializar listeners para los elementos recién creados
         setupActionListeners(); 
         setupCommentFormListener();
     }
 
     // 6. FUNCIONES DE COMENTARIOS
     function loadComments(recipeId) {
-        if (typeof CommentService === 'undefined') {
-            console.error("CommentService no cargado.");
-            return;
-        }
-
-        CommentService.getComments(recipeId)
-            .done(function(response) {
-                if (response.success) {
-                    renderCommentsList(response.data);
-                } else {
-                    console.error("Error API comentarios:", response.message);
-                }
-            })
-            .fail(function() {
-                console.error("Fallo de red al cargar comentarios.");
-            });
+        if (typeof CommentService === 'undefined') return;
+        CommentService.getComments(recipeId).done(function(response) {
+            if (response.success) renderCommentsList(response.data);
+        });
     }
 
     function renderCommentsList(comments) {
         $commentsListContainer.empty();
-        
         if (!comments || comments.length === 0) {
             $commentsListContainer.html('<p class="text-muted text-center py-3">Aún no hay comentarios. ¡Sé el primero!</p>');
             return;
         }
-
-        comments.forEach(c => {
-            appendSingleComment(c);
-        });
+        comments.forEach(c => appendSingleComment(c));
     }
 
     function appendSingleComment(c, prepend = false) {
         const date = new Date(c.fecha_comentario).toLocaleDateString();
-        const avatar = c.avatar_url; // Asume que la API lo devuelve, si no, poner default
-        
-        // Lógica de botones (Eliminar vs Reportar)
         let actionBtnHTML = '';
         if (currentUser) {
             if (parseInt(currentUser.user_id) === parseInt(c.id_usuario)) {
-                // Es MI comentario -> Botón Eliminar (Abre Modal)
-                actionBtnHTML = `
-                    <button class="btn btn-sm btn-link text-danger delete-comment-btn position-absolute top-0 end-0 m-2 p-0" title="Eliminar comentario" style="text-decoration: none;">
-                        <i class="bi bi-trash"></i>
-                    </button>`;
+                actionBtnHTML = `<button class="btn btn-sm btn-link text-danger delete-comment-btn position-absolute top-0 end-0 m-2 p-0" title="Eliminar comentario" style="text-decoration: none;"><i class="bi bi-trash"></i></button>`;
             } else {
-                // NO es mi comentario -> Botón Reportar (Abre Modal)
-                actionBtnHTML = `
-                    <button class="btn btn-sm btn-link text-muted report-comment-btn position-absolute top-0 end-0 m-2 p-0" title="Denunciar comentario" style="text-decoration: none;">
-                        <i class="bi bi-flag-fill"></i>
-                    </button>`;
+                actionBtnHTML = `<button class="btn btn-sm btn-link text-muted report-comment-btn position-absolute top-0 end-0 m-2 p-0" title="Denunciar comentario" style="text-decoration: none;"><i class="bi bi-flag-fill"></i></button>`;
             }
         }
-
-        const commentHtml = `
-            <div class="comment-item mb-3 p-3 border rounded bg-white position-relative" data-comment-id="${c.id}">
-                ${actionBtnHTML}
-                <div class="d-flex align-items-center mb-2">
-                    <h6 class="mb-0 fw-bold">
-                        <a href="profile.html?userId=${c.id_usuario}" class="text-decoration-none text-dark hover-orange">
-                            ${escapeHTML(c.username)}
-                        </a>
-                    </h6>
-                    <small class="text-muted ms-2">• ${date}</small>
-                </div>
-                <p class="comment-content mb-0 text-secondary">${escapeHTML(c.contenido)}</p>
-            </div>
-        `;
-
-        if (prepend) {
-            $commentsListContainer.prepend(commentHtml);
-            $commentsListContainer.find('.no-comments-message').remove();
-        } else {
-            $commentsListContainer.append(commentHtml);
-        }
+        const commentHtml = `<div class="comment-item mb-3 p-3 border rounded bg-white position-relative" data-comment-id="${c.id}">${actionBtnHTML}<div class="d-flex align-items-center mb-2"><h6 class="mb-0 fw-bold"><a href="profile.html?userId=${c.id_usuario}" class="text-decoration-none text-dark hover-orange">${escapeHTML(c.username)}</a></h6><small class="text-muted ms-2">• ${date}</small></div><p class="comment-content mb-0 text-secondary">${escapeHTML(c.contenido)}</p></div>`;
+        if (prepend) { $commentsListContainer.prepend(commentHtml); $commentsListContainer.find('.no-comments-message').remove(); }
+        else { $commentsListContainer.append(commentHtml); }
     }
 
-    // Función que realiza la llamada AJAX para borrar COMENTARIO
     function deleteCommentConfirmed() {
         if (!commentIdToDelete) return;
-
-        CommentService.deleteComment(commentIdToDelete)
-            .done(function(resp) {
-                if (resp.success) {
-                    // Recargar lista completa para evitar inconsistencias
-                    loadComments(currentRecipeData.id); 
-                } else {
-                    console.error("Error al eliminar comentario:", resp.message);
+        CommentService.deleteComment(commentIdToDelete).done(function(resp) {
+            if (resp.success) {
+                // ELIMINAR NOTIFICACIÓN DE COMENTARIO
+                if (typeof window.NotificationHelper !== 'undefined') {
+                    window.NotificationHelper.remove(currentRecipeData.id_usuario, 'comentario', currentRecipeData.id);
                 }
-            })
-            .fail(function() {
-                console.error("Error de red al eliminar el comentario.");
-            })
-            .always(function() {
-                // Ocultar modal y limpiar variable
-                if (confirmDeleteCommentModalInstance) confirmDeleteCommentModalInstance.hide();
-                commentIdToDelete = null;
-            });
+                loadComments(currentRecipeData.id); 
+            }
+        }).always(function() {
+            if (confirmDeleteCommentModalInstance) confirmDeleteCommentModalInstance.hide();
+            commentIdToDelete = null;
+        });
     }
 
-    // Funcion para redirecionar al perfil
-    function redirectProfile(userId){
-        if(userId){
-            window.location.assign(`profile.html?userId=${userId}`);
-        }
-    }
+    function redirectProfile(userId){ if(userId) window.location.assign(`profile.html?userId=${userId}`); }
 
-
-    // 7. LISTENERS DE ACCIONES Y FORMULARIOS
     function setupCommentFormListener() {
         if ($addCommentForm.length) {
-            // Usamos .off().on() para asegurar que no duplicamos listeners
             $addCommentForm.off('submit').on('submit', function(e) {
                 e.preventDefault();
                 const $textarea = $('#commentText');
                 const text = $textarea.val().trim();
-                const $btn = $addCommentForm.find('button[type="submit"]');
-
                 if (!text) return;
+                const $btn = $addCommentForm.find('button[type="submit"]');
+                $btn.prop('disabled', true);
+                
+                CommentService.addComment(currentRecipeData.id, text).done(function(resp) {
+                    if (resp.success) {
+                        $textarea.val('');
+                        appendSingleComment(resp.data, true); 
 
-                const originalText = $btn.text();
-                $btn.prop('disabled', true).text("Publicando...");
-
-                CommentService.addComment(currentRecipeData.id, text)
-                    .done(function(resp) {
-                        if (resp.success) {
-                            $textarea.val('');
-                            // Pintar el nuevo comentario inmediatamente
-                            appendSingleComment(resp.data, true); 
-                        } else {
-                            console.error("Error:", resp.message);
+                        // DISPARAR NOTIFICACIÓN DE COMENTARIO
+                        if (typeof window.NotificationHelper !== 'undefined') {
+                            window.NotificationHelper.send(currentRecipeData.id_usuario, 'comentario', currentRecipeData.id);
                         }
-                    })
-                    .fail(function() {
-                        console.error("Error de red al publicar.");
-                    })
-                    .always(function() {
-                        $btn.prop('disabled', false).text(originalText);
-                    });
+                    }
+                }).always(() => $btn.prop('disabled', false));
             });
         }
     }
 
     // 7. LISTENERS DE ACCIONES
     function setupActionListeners() {
-        
-        // --- RECETA: Eliminar (Abre Modal) ---
-        const $deleteBtn = $('#deleteRecipeBtn');
-        if ($deleteBtn.length) {
-            $deleteBtn.on('click', function() {
-                if (confirmDeleteRecipeModalInstance) {
-                    confirmDeleteRecipeModalInstance.show();
-                } else {
-                    console.error("Modal Borrar Receta no inicializado");
-                }
-            });
-        }
+        // --- RECETA: Eliminar ---
+        $('#deleteRecipeBtn').on('click', () => confirmDeleteRecipeModalInstance?.show());
 
-        // --- RECETA: Confirmar Eliminación (AJAX REAL REUTILIZABLE) ---
         $('#confirmDeleteRecipeBtn').off('click').on('click', function() {
-            RecipeService.deleteRecipe(currentRecipeData.id)
-                .done(function(resp) {
-                    if (confirmDeleteRecipeModalInstance) confirmDeleteRecipeModalInstance.hide();
-                    if (resp.success) {
-                        $recipeDetailContainer.html('<div class="alert alert-success text-center">Receta eliminada correctamente. Redirigiendo...</div>');
-                        setTimeout(() => window.location.href = 'index.html', 2000);
-                    } else {
-                        console.error("Error al eliminar receta:", resp.message);
-                    }
-                })
-                .fail(function() { console.error("Error de conexión al eliminar."); });
+            RecipeService.deleteRecipe(currentRecipeData.id).done(function(resp) {
+                if (confirmDeleteRecipeModalInstance) confirmDeleteRecipeModalInstance.hide();
+                if (resp.success) window.location.href = 'index.html';
+            });
         });
         
-        // --- RECETA: Like (Me Gusta) ---
+        // --- RECETA: Like ---
         let $likeBtn = $('#likeRecipeBtn');
         let $likesDisplay = $('#likesCountDisplay');
         if ($likeBtn.length && currentUser) {
             $likeBtn.on('click', function() {
-                let isLiked = $likeBtn.toggleClass('liked').hasClass('liked');
+                let haDadoLike = $likeBtn.toggleClass('liked').hasClass('liked');
                 let $heartEmpty = $likeBtn.find('.bi-suit-heart');
                 let $heartFill = $likeBtn.find('.bi-suit-heart-fill');
                 
-                if (isLiked) {
-                    $heartEmpty.addClass('d-none');
-                    $heartFill.removeClass('d-none');
+                if (haDadoLike) {
+                    $heartEmpty.addClass('d-none'); $heartFill.removeClass('d-none');
                     currentRecipeData.likesCount++;
                 } else {
-                    $heartEmpty.removeClass('d-none');
-                    $heartFill.addClass('d-none');
+                    $heartEmpty.removeClass('d-none'); $heartFill.addClass('d-none');
                     currentRecipeData.likesCount--;
                 }
                 $likesDisplay.text(`${currentRecipeData.likesCount} me gusta`);
 
                 if (typeof InteractionService !== 'undefined') {
                     InteractionService.toggleLike(currentRecipeData.id).done(function(resp) {
-                        if(resp.success) $likesDisplay.text(`${resp.newCount} me gusta`);
+                        if(resp.success) {
+                            $likesDisplay.text(`${resp.newCount} me gusta`);
+                            if (typeof window.NotificationHelper !== 'undefined') {
+                                if (haDadoLike) {
+                                    window.NotificationHelper.send(currentRecipeData.id_usuario, 'like', currentRecipeData.id);
+                                } else {
+                                    window.NotificationHelper.remove(currentRecipeData.id_usuario, 'like', currentRecipeData.id);
+                                }
+                            }
+                        }
                     });
                 }
             });
         } else if ($likeBtn.length) {
-            $likeBtn.on('click', function() { window.location.href = 'logReg.html#login'; });
+            $likeBtn.on('click', () => window.location.href = 'logReg.html#login');
         }
 
-        // --- RECETA: Guardar (Favorito) ---
+        // --- RECETA: Guardar ---
         let $favBtn = $('#favoriteBtn');
         if ($favBtn.length && currentUser) {
             $favBtn.on('click', function() {
@@ -472,25 +384,16 @@ $(document).ready(function() {
                     });
                 }
             });
-        } else if ($favBtn.length) {
-            $favBtn.on('click', function() { window.location.href = 'logReg.html#login'; });
         }
 
         // --- SEGUIR / DEJAR DE SEGUIR ---
-        // CORRECCIÓN: Definir la variable antes de usarla
         const followBtn = document.getElementById('followBtn');
-        
         if (followBtn) {
-            // Clonamos el botón para limpiar listeners previos
             const newFollowBtn = followBtn.cloneNode(true);
             followBtn.parentNode.replaceChild(newFollowBtn, followBtn);
 
             newFollowBtn.addEventListener('click', function() {
-                if (!currentUser) {
-                    window.location.href = 'logReg.html#login';
-                    return;
-                }
-
+                if (!currentUser) { window.location.href = 'logReg.html#login'; return; }
                 newFollowBtn.disabled = true;
                 const authorId = currentRecipeData.id_usuario;
 
@@ -502,107 +405,66 @@ $(document).ready(function() {
                                     newFollowBtn.textContent = 'Seguido';
                                     newFollowBtn.classList.remove('btn-outline-orange');
                                     newFollowBtn.classList.add('btn-follow');
-                                    currentRecipeData.isFollowingAuthor = true;
+                                    
+                                    // ENVIAR NOTIFICACIÓN DE SEGUIDOR
+                                    // Enviamos currentUser.user_id como contenido_id para que el backend 
+                                    // lo vincule y el enlace apunte al perfil del seguidor.
+                                    if (typeof window.NotificationHelper !== 'undefined') {
+                                        window.NotificationHelper.send(authorId, 'seguidor', currentUser.user_id);
+                                    }
                                 } else {
                                     newFollowBtn.textContent = 'Seguir';
                                     newFollowBtn.classList.remove('btn-follow');
                                     newFollowBtn.classList.add('btn-outline-orange');
-                                    currentRecipeData.isFollowingAuthor = false;
+                                    
+                                    // ELIMINAR NOTIFICACIÓN DE SEGUIDOR
+                                    if (typeof window.NotificationHelper !== 'undefined') {
+                                        window.NotificationHelper.remove(authorId, 'seguidor', currentUser.user_id);
+                                    }
                                 }
-                            } else {
-                                console.error("Error al seguir:", resp.message);
                             }
                         })
-                        .fail(function() {
-                            console.error("Error de conexión al intentar seguir.");
-                        })
-                        .always(function() {
-                            newFollowBtn.disabled = false;
-                        });
-                } else {
-                    console.error("InteractionService no está cargado.");
-                    newFollowBtn.disabled = false;
+                        .always(() => newFollowBtn.disabled = false);
                 }
             });
         }
 
-        // --- RECETA: Reportar (Abre Modal) ---
-        let $reportBtn = $('#reportRecipeBtn');
-        if ($reportBtn.length) {
-            $reportBtn.on('click', function() {
-                if (confirmReportRecipeModalInstance) confirmReportRecipeModalInstance.show();
-            });
-        }
+        // --- REPORTES ---
+        $('#reportRecipeBtn').on('click', () => confirmReportRecipeModalInstance?.show());
+        $('#confirmReportRecipeBtn').off('click').on('click', function() {
+            if (typeof InteractionService !== 'undefined') {
+                InteractionService.reportRecipe(currentRecipeData.id).done(() => confirmReportRecipeModalInstance?.hide());
+            }
+        });
 
-        // --- RECETA: Confirmar Reporte (Botón del Modal) ---
-        let $confirmReportRecBtn = $('#confirmReportRecipeBtn');
-        if ($confirmReportRecBtn.length) {
-            $confirmReportRecBtn.off('click').on('click', function() {
-                if (typeof InteractionService !== 'undefined') {
-                    InteractionService.reportRecipe(currentRecipeData.id).done(function(resp) {
-                        if (confirmReportRecipeModalInstance) confirmReportRecipeModalInstance.hide();
-                    });
-                }
-            });
-        }
-
-        // --- COMENTARIOS: Delegación de eventos (Click en lista) ---
         if ($commentsListContainer.length) {
             $commentsListContainer.off('click').on('click', function(e) {
                 const $target = $(e.target);
-
-                // A. ELIMINAR COMENTARIO
-                const $deleteBtn = $target.closest('.delete-comment-btn');
-                if ($deleteBtn.length) {
-                    const $commentItem = $deleteBtn.closest('.comment-item');
-                    commentIdToDelete = $commentItem.data('comment-id'); 
-                    
-                    if (confirmDeleteCommentModalInstance) {
-                        confirmDeleteCommentModalInstance.show();
-                    } else {
-                        if(confirm("¿Eliminar comentario?")) deleteCommentConfirmed();
-                    }
-                    return;
+                const $del = $target.closest('.delete-comment-btn');
+                const $rep = $target.closest('.report-comment-btn');
+                if ($del.length) {
+                    commentIdToDelete = $del.closest('.comment-item').data('comment-id'); 
+                    confirmDeleteCommentModalInstance?.show();
                 }
-
-                // B. REPORTAR COMENTARIO
-                const $reportBtn = $target.closest('.report-comment-btn');
-                if ($reportBtn.length) {
-                    const $commentItem = $reportBtn.closest('.comment-item');
-                    commentToReport = $commentItem.data('comment-id'); 
-                    if (confirmReportCommentModalInstance) confirmReportCommentModalInstance.show();
+                if ($rep.length) {
+                    commentIdToReport = $rep.closest('.comment-item').data('comment-id'); 
+                    confirmReportCommentModalInstance?.show();
                 }
             });
         }
         
-        // --- COMENTARIOS: Confirmar Borrado ---
-        $('#confirmDeleteCommentBtn').off('click').on('click', function() {
-            deleteCommentConfirmed();
-        });
-
-        // --- COMENTARIOS: Confirmar Reporte ---
+        $('#confirmDeleteCommentBtn').off('click').on('click', () => deleteCommentConfirmed());
         $('#confirmReportCommentBtn').off('click').on('click', function() {
             if (commentIdToReport && typeof InteractionService !== 'undefined') {
-                InteractionService.reportComment(commentIdToReport, currentRecipeData.id).done(function(resp) {
-                    if (confirmReportCommentModalInstance) confirmReportCommentModalInstance.hide();
-                });
+                InteractionService.reportComment(commentIdToReport, currentRecipeData.id).done(() => confirmReportCommentModalInstance?.hide());
             }
         });
     }
 
-    // Utilidades
-    function escapeHTML(str) {
-        if (!str) return '';
-        return $('<div>').text(String(str)).html();
-    }
-    
+    function escapeHTML(str) { return str ? $('<div>').text(String(str)).html() : ''; }
     function formatRecipeDuration(totalMinutes) {
-        if (typeof window.formatRecipeDuration === 'function') return window.formatRecipeDuration(totalMinutes);
-        
-        let m = parseInt(totalMinutes);
-        if(!m) return '0 min';
-        let h = Math.floor(m / 60);
-        let min = m % 60;
+        let m = parseInt(totalMinutes); if(!m) return '0 min';
+        let h = Math.floor(m / 60); let min = m % 60;
         return (h > 0 ? h + 'h ' : '') + (min > 0 ? min + 'min' : '');
     }
 });

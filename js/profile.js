@@ -1,201 +1,247 @@
-// js/profile.js
+// TFG/js/profile.js
 
-$(document).ready(function() {
-    const $profileInfoContainer = $('#profileInfoContainer');
-    const $profileContentTabsContainer = $('#profileContentTabs'); // Contenedor de las pestañas y su contenido
-    const $profileTabsList = $('#profileTabs'); // El <ul> de las pestañas
-    const $publishedRecipesContainer = $('#publishedRecipesContainer');
-    const $savedRecipesContainer = $('#savedRecipesContainer');
+$(function() {
+    console.log("profile.js: Controlador cargado.");
 
-    if (typeof mockProfileData === 'undefined' || !mockProfileData || !mockProfileData.user) {
-        console.error("ERROR: mockProfileData o mockProfileData.user no está definido.");
-        $profileInfoContainer.html('<p class="text-center text-danger p-5">Error al cargar datos del perfil.</p>');
-        $profileContentTabsContainer.hide(); 
-        return; 
-    }
-
-    const viewingUserProfile = mockProfileData.user;
-    const publishedRecipesData = mockProfileData.publishedRecipes || [];
-    const savedRecipesData = mockProfileData.savedRecipes || []; // Estas solo se mostrarán si es el perfil propio
+    const $infoContainer = $('#profileInfoContainer');
+    const $tabsContainer = $('#profileContentTabs');
+    const $pubGrid = $('#publishedRecipesContainer');
+    const $savGrid = $('#savedRecipesContainer');
+    const $savedTabLi = $('#saved-tab').parent();
     
-    // SIMULACIÓN: Quién está viendo la página. En una app real, esto vendría de la sesión.
-    const loggedInUser = { 
-        id: 'currentUser123', // ID del usuario logueado
-        // Este es el perfil que ESTAMOS VIENDO, no necesariamente el del usuario logueado
-        // Para determinar si es el perfil propio:
-        isViewingOwnProfile: viewingUserProfile.isOwnProfile // Usamos el flag de mockProfileData.user
-    };
-    
-    let currentUserIsFollowingTarget = viewingUserProfile.isFollowing; // Estado inicial si es perfil de otro
+    // Variable local para almacenar el usuario de sesión
+    let currentUserLocal = null;
 
+    // Inicializar
+    init();
 
-    function renderProfileInfo() {
-        if (!$profileInfoContainer.length) return;
+    function init() {
+        const urlParams = new URLSearchParams(window.location.search);
+        let userId = urlParams.get('userId') || urlParams.get('id');
 
-        let actionButtonsHtml = '';
-        if (loggedInUser.isViewingOwnProfile) {
-            actionButtonsHtml = `
-                <a href="profile-edit.html?userId=${viewingUserProfile.id}" class="btn btn-sm btn-outline-secondary">
-                    <i class="bi bi-pencil-fill me-1"></i> Editar Perfil
-                </a>`;
-        } else {
-            // Botón de Seguir/Dejar de seguir para perfiles de otros usuarios
-            actionButtonsHtml = `
-                <button id="followProfileBtn" class="btn btn-sm ${currentUserIsFollowingTarget ? 'btn-secondary' : 'btn-orange'}">
-                    <i class="bi ${currentUserIsFollowingTarget ? 'bi-person-check-fill' : 'bi-person-plus-fill'} me-1"></i> 
-                    ${currentUserIsFollowingTarget ? 'Siguiendo' : 'Seguir'}
-                </button>`;
-        }
+        // Checkeo de sesión primero (notifications.js ya hace el trabajo pesado, esto es un refresco local)
+        if (typeof ProfileService === 'undefined') { console.error("Falta ProfileService"); return; }
 
-        const profileHtml = `
-            <div class="card shadow-sm mb-5 border-0">
-                <div class="card-body p-4">
-                    <div class="row">
-                        <div class="col-md-3 text-center mb-4 mb-md-0">
-                            <img src="${viewingUserProfile.avatarUrl}" 
-                                 alt="${escapeHTML(viewingUserProfile.fullName)}" 
-                                 class="avatar img-fluid rounded-circle shadow-sm mb-3">
-                            <h2 class="h4 fw-bold mb-1">${escapeHTML(viewingUserProfile.username)}</h2>
-                            <p class="text-muted mb-2">${escapeHTML(viewingUserProfile.fullName)}</p>
-                            <div class="d-flex justify-content-center gap-3 my-3">
-                                <div class="text-center">
-                                    <p class="fw-bold mb-0">${viewingUserProfile.stats.following || 0}</p>
-                                    <small class="text-muted">Siguiendo</small>
-                                </div>
-                                <div class="text-center">
-                                    <p class="fw-bold mb-0">${(viewingUserProfile.stats.followers || 0).toLocaleString('es-ES')}</p>
-                                    <small class="text-muted">Seguidores</small>
-                                </div>
-                                <div class="text-center">
-                                    <p class="fw-bold mb-0">${publishedRecipesData.filter(r => loggedInUser.isViewingOwnProfile || r.visibility === 'public').length || 0}</p>
-                                    <small class="text-muted">Recetas</small>
-                                </div>
-                            </div>
-                            <div class="d-flex flex-wrap justify-content-center gap-2 mt-3 profile-main-actions">
-                                ${actionButtonsHtml}
-                            </div>
-                        </div>
-                        <div class="col-md-9">
-                            <div class="bg-white p-4 rounded-3 shadow-sm h-100">
-                                <h3 class="h5 fw-bold mb-3 border-bottom pb-2">Sobre mí</h3>
-                                <p class="text-muted mb-0" style="white-space: pre-wrap;">${escapeHTML(viewingUserProfile.bio || (loggedInUser.isViewingOwnProfile ? "Añade una biografía para que otros te conozcan." : "Este usuario aún no ha añadido una biografía."))}</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>`;
-        $profileInfoContainer.html(profileHtml);
-        setupProfileButtonListeners(); 
-    }
-
-    function createRecipeCard(recipe, isOwnProfileViewing) {
-        const $card = $('<div>').addClass('col');
-        const recipeLink = `recipe.html?id=${recipe.id}`;
-        
-        // Para recetas guardadas, el autor es diferente al del perfil que se está viendo
-        // Para recetas publicadas, el autor es el del perfil que se está viendo
-        const authorName = isOwnProfileViewing ? viewingUserProfile.fullName : recipe.author;
-        const authorProfileLink = isOwnProfileViewing ? `profile.html?userId=${viewingUserProfile.id}` : `profile.html?userId=${recipe.authorId}`;
-
-        let visibilityBadgeHtml = '';
-        // El distintivo de visibilidad solo se muestra si es el perfil propio y la receta es publicada por este usuario
-        if (isOwnProfileViewing) { 
-            const badgeClass = recipe.visibility === 'public' ? 'is-public' : 'is-private';
-            const badgeIcon = recipe.visibility === 'public' ? 'bi-eye-fill' : 'bi-eye-slash-fill';
-            const badgeText = recipe.visibility === 'public' ? 'Pública' : 'Oculta';
-            visibilityBadgeHtml = `<span class="badge visibility-badge ${badgeClass}"><i class="bi ${badgeIcon}"></i> ${badgeText}</span>`;
-        }
-        
-        const cardHtml = `
-            <div class="card recipe-card h-100 shadow-sm">
-                 <a href="${recipeLink}" class="text-decoration-none position-relative">
-                    ${visibilityBadgeHtml}
-                    <img src="${recipe.image}" class="card-img-top" alt="${escapeHTML(recipe.title)}">
-                </a>
-                <div class="card-body d-flex flex-column">
-                    <h5 class="card-title mb-1">
-                        <a href="${recipeLink}" class="text-dark text-decoration-none stretched-link">${escapeHTML(recipe.title)}</a>
-                    </h5>
-                    ${!isOwnProfileViewing && recipe.author ? `<p class="card-text text-muted small mb-2">Por: <a href="${authorProfileLink}" class="text-orange text-decoration-none">${escapeHTML(authorName)}</a></p>` : '<p class="card-text text-muted small mb-2"> </p>'}
-                    <div class="mt-auto d-flex justify-content-between align-items-center">
-                        <span class="text-danger"> 
-                            <i class="bi bi-heart-fill"></i> ${recipe.likes || 0}
-                        </span>
-                        <span class="badge bg-light text-dark">
-                            <i class="bi bi-clock-fill"></i> ${escapeHTML(recipe.time)}
-                        </span>
-                    </div>
-                </div>
-            </div>`;
-        $card.html(cardHtml);
-        return $card;
-    }
-
-    function renderPublishedRecipes() {
-        $publishedRecipesContainer.empty();
-        // Si no es mi perfil, solo muestro las públicas. Si es mi perfil, muestro todas.
-        const recipesToShow = loggedInUser.isViewingOwnProfile ? publishedRecipesData : publishedRecipesData.filter(r => r.visibility === 'public');
-        
-        $('#publishedRecipeCount').text(recipesToShow.length);
-
-        if (recipesToShow.length > 0) {
-            recipesToShow.forEach(recipe => {
-                // El segundo argumento de createRecipeCard es true si es el perfil del usuario logueado Y estamos en la pestaña de publicadas por él.
-                $publishedRecipesContainer.append(createRecipeCard(recipe, loggedInUser.isViewingOwnProfile)); 
+        ProfileService.getProfile(userId)
+            .done(function(res) {
+                if (res.success) {
+                    renderProfile(res);
+                } else {
+                    $infoContainer.html(`<div class="alert alert-warning text-center">${escapeHTML(res.message)}</div>`);
+                }
+            })
+            .fail(function() {
+                $infoContainer.html('<p class="text-center text-danger p-5">Error al cargar perfil.</p>');
             });
-        } else {
-            $publishedRecipesContainer.html(`<p class="text-center text-muted col-12">${loggedInUser.isViewingOwnProfile ? "Aún no has publicado recetas." : "Este usuario no tiene recetas públicas."}</p>`);
-        }
     }
 
-    function renderSavedRecipes() {
-        $savedRecipesContainer.empty();
-        // La pestaña de guardadas y su contenido solo se muestran si es el perfil propio
-        if (loggedInUser.isViewingOwnProfile) {
-            $('#saved-tab').show(); // Asegurar que la pestaña sea visible
-            $('#savedRecipeCount').text(savedRecipesData.length);
+    function renderProfile(res) {
+        const user = res.user;
+        const isOwn = res.is_own_profile;
+        const published = res.publishedRecipes || [];
+        const saved = res.savedRecipes || [];
 
-            if (savedRecipesData.length > 0) {
-                savedRecipesData.forEach(recipe => {
-                    // El segundo argumento es false porque son recetas guardadas (podrían ser de otros autores)
-                    $savedRecipesContainer.append(createRecipeCard(recipe, false)); 
-                });
+        // Definimos los enlaces solo si es mi propio perfil
+        const linkSiguiendo = isOwn ? 'href="activity.html?tab=following"' : 'href="javascript:void(0)"';
+        const linkSeguidores = isOwn ? 'href="activity.html?tab=followers"' : 'href="javascript:void(0)"';
+        const pointerClass = isOwn ? 'cursor-pointer' : '';
+
+        // 1. INFO USUARIO
+        let actionsHtml = isOwn 
+            ? `<a href="profile-edit.html" class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil-fill me-1"></i> Editar Perfil</a>`//Print enlace editar perfil
+            : `<button id="profileFollowBtn" class="btn btn-sm ${user.isFollowing ? 'btn-secondary' : 'btn-orange'}" data-userid="${user.id}">
+                <i class="bi ${user.isFollowing ? 'bi-person-check-fill' : 'bi-person-plus-fill'}"></i> ${user.isFollowing ? 'Siguiendo' : 'Seguir'} 
+               </button>`; //Print botón de seguir
+        
+        // Listener botón seguir mejorado con Notificaciones
+        $(document).off('click', '#profileFollowBtn').on('click', '#profileFollowBtn', function() {
+            if(typeof InteractionService !== 'undefined') {
+                const uid = $(this).data('userid');
+                const $btn = $(this);
+                
+                $btn.prop('disabled', true); // Evitar doble clic
+
+                InteractionService.toggleFollow(uid).done(r => { 
+                    if(r.success) {
+                        // GESTIÓN DE NOTIFICACIONES (Idéntica a recipe.js)
+                        if (typeof window.NotificationHelper !== 'undefined' && currentUserLocal) {
+                            if (r.isFollowing) {
+                                // Enviamos el ID de este usuario para que en el link salga su perfil
+                                window.NotificationHelper.send(uid, 'seguidor', currentUserLocal.user_id);
+                            } else {
+                                // Borramos la notificación vinculada
+                                window.NotificationHelper.remove(uid, 'seguidor', currentUserLocal.user_id);
+                            }
+                        }
+                        init(); // Recargar perfil tras seguir para actualizar estadísticas
+                    } 
+                }).always(() => { $btn.prop('disabled', false); });
+            }
+        });
+
+        const displayName = user.fullName || user.username;
+        const infoHtml = `
+            <div class="card shadow-sm mb-5 border-0 rounded-4">
+                <div class="card-body p-4">
+                    <div class="row align-items-center text-center text-md-start">
+                        <div class="col-md-3 text-center mb-3">
+                            <img src="${escapeHTML(user.avatarUrl)}" class="rounded-circle shadow-sm" style="width:140px; height:140px; object-fit:cover;">
+                        </div>
+                        <div class="col-md-9 border-start-md ps-md-4">
+                            <div class="d-flex flex-column flex-md-row justify-content-between align-items-center mb-2">
+                                <div>
+                                    <h2 class="h3 fw-bold mb-0">@${escapeHTML(user.username)}</h2>
+                                    <small class="text-muted">${escapeHTML(displayName)}</small>
+                                </div>
+                                <div class="mt-2 mt-md-0">${actionsHtml}</div>
+                            </div>
+                            <p class="text-muted" style="white-space: pre-wrap;">${escapeHTML(user.bio || "Sin biografía.")}</p>
+                            <div class="d-flex justify-content-center justify-content-md-start gap-4 mt-3">
+                                <a ${linkSiguiendo} class="text-center text-decoration-none text-dark ${pointerClass}">
+                                    <b>${user.stats.following}</b><br><small class="text-muted">Siguiendo</small>
+                                </a>
+                                <a ${linkSeguidores} class="text-center text-decoration-none text-dark ${pointerClass}">
+                                    <b>${user.stats.followers}</b><br><small class="text-muted">Seguidores</small>
+                                </a>
+                                <div class="text-center">
+                                    <b>${published.length}</b><br><small class="text-muted">Recetas</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+        $infoContainer.html(infoHtml);
+
+        $('.seguidos').attr('href', 'activity.html');
+        $('.seguidores').attr('href', 'activity.html');
+
+        // 2. RECETAS PUBLICADAS
+        $('#publishedRecipeCount').text(published.length);
+        $pubGrid.empty();
+        if (published.length > 0) {
+            published.forEach(r => $pubGrid.append(createRecipeCardProfile(r, isOwn)));
+        } else {
+            $pubGrid.html('<div class="col-12"><p class="text-center text-muted py-5">Aún no hay recetas públicas.</p></div>');
+        }
+
+        // 3. RECETAS GUARDADAS
+        if (isOwn) {
+            $savedTabLi.show();
+            $('#savedRecipeCount').text(saved.length);
+            $savGrid.empty();
+            if (saved.length > 0) {
+                saved.forEach(r => $savGrid.append(createRecipeCardProfile(r, false)));
             } else {
-                $savedRecipesContainer.html('<p class="text-center text-muted col-12">Aún no has guardado ninguna receta.</p>');
+                $savGrid.html('<div class="col-12"><p class="text-center text-muted py-5">No tienes recetas guardadas.</p></div>');
             }
         } else {
-            $('#saved-tab').hide(); // Ocultar la pestaña "Guardadas" si no es mi perfil
-            $('#saved').removeClass('show active'); // Asegurar que no esté activa
+            $savedTabLi.hide();
         }
+        $tabsContainer.fadeIn();
     }
 
-    function setupProfileButtonListeners() {
-        const $followProfileBtn = $('#followProfileBtn');
-        if ($followProfileBtn.length) {
-            $followProfileBtn.on('click', function() {
-                currentUserIsFollowingTarget = !currentUserIsFollowingTarget;
-                $(this).html(`<i class="bi ${currentUserIsFollowingTarget ? 'bi-person-check-fill' : 'bi-person-plus-fill'} me-1"></i> ${currentUserIsFollowingTarget ? 'Siguiendo' : 'Seguir'}`);
-                $(this).toggleClass('btn-orange', !currentUserIsFollowingTarget).toggleClass('btn-secondary', currentUserIsFollowingTarget);
-                console.log('Siguiendo a este perfil:', currentUserIsFollowingTarget);
-                // Aquí iría la llamada AJAX para actualizar el estado de seguimiento en el backend
-                // mockProfileData.user.isFollowing = currentUserIsFollowingTarget; // Actualizar el mock localmente
-            });
+    /**
+     * Función MEJORADA para integrar Categoría, Dieta y Dificultad en el diseño
+     */
+    function createRecipeCardProfile(r, showVisibilityBadge) {
+        // 1. Badge de Visibilidad (Pública/Privada) sobre la imagen
+        let visibilityBadge = '';
+        if (showVisibilityBadge) {
+            const isPub = (r.visibilidad === 'publica');
+            const badgeClass = isPub ? 'bg-success' : 'bg-secondary';
+            const badgeIcon = isPub ? 'bi-eye' : 'bi-eye-slash';
+            const badgeText = isPub ? 'Pública' : 'Privada';
+            visibilityBadge = `<span class="badge position-absolute top-0 end-0 m-2 ${badgeClass} shadow-sm" style="z-index:10;">
+                                <i class="bi ${badgeIcon}"></i> ${badgeText}
+                               </span>`;
         }
+
+        // 2. Datos básicos
+        const img = r.imagen_url || 'resources/default-recipe.jpg';
+        const time = formatTimeLocal(r.time);
+        const recipeLink = `recipe.html?id=${r.id}`;
+
+        // 3. Preparar Meta-datos (Categoría y Dieta)
+        const categoria = r.categoria || '';
+        const dieta = r.dieta || '';
+        let metaString = '';
+        if (categoria && dieta) metaString = `${escapeHTML(categoria)} &bull; ${escapeHTML(dieta)}`;
+        else if (categoria) metaString = escapeHTML(categoria);
+        else if (dieta) metaString = escapeHTML(dieta);
+
+        // 4. Color y lógica de Dificultad
+        const dif = r.dificultad || 'Normal';
+        let difColor = 'text-secondary';
+        let difIcon = 'bi-bar-chart';
+        
+        switch(dif.toLowerCase()) {
+            case 'facil': difColor = 'text-success'; difIcon = 'bi-bar-chart-fill'; break;
+            case 'normal': difColor = 'text-warning'; difIcon = 'bi-bar-chart-steps'; break;
+            case 'dificil': difColor = 'text-danger'; difIcon = 'bi-graph-up-arrow'; break;
+        }
+
+        // --- HTML DISEÑO INTEGRADO ---
+        return `
+            <div class="col">
+                <div class="card h-100 border-0 shadow-sm recipe-card position-relative overflow-hidden">
+                    <a href="${recipeLink}" class="text-decoration-none text-dark h-100 d-flex flex-column">
+                        
+                        <!-- Imagen con Badge de Visibilidad -->
+                        <div class="position-relative">
+                            ${visibilityBadge}
+                            <img src="${escapeHTML(img)}" class="card-img-top" style="height: 200px; object-fit: cover;" loading="lazy" alt="${escapeHTML(r.titulo)}">
+                        </div>
+                        
+                        <div class="card-body d-flex flex-column p-3">
+                            <!-- Metadatos Superiores (Categoría • Dieta) -->
+                            <div class="text-uppercase text-muted fw-bold mb-2" style="font-size: 0.65rem; letter-spacing: 0.5px;">
+                                ${metaString}
+                            </div>
+
+                            <!-- Título -->
+                            <h6 class="card-title fw-bold mb-1 text-truncate" style="font-size: 1.1rem;">
+                                ${escapeHTML(r.titulo)}
+                            </h6>
+
+                            <!-- Autor (Si no es propia) -->
+                            ${r.author ? `<small class="text-muted mb-3 d-block">Por ${escapeHTML(r.author)}</small>` : '<div class="mb-3"></div>'}
+                            
+                            <!-- Pie de tarjeta: Dificultad, Tiempo, Likes -->
+                            <div class="mt-auto pt-3 border-top d-flex justify-content-between align-items-center">
+                                <!-- Izquierda: Dificultad con color -->
+                                <span class="${difColor} small fw-semibold" title="Dificultad">
+                                    <i class="bi ${difIcon}"></i> ${escapeHTML(dif)}
+                                </span>
+                                
+                                <!-- Derecha: Tiempo y Likes -->
+                                <div class="text-muted small">
+                                    <span class="me-3"><i class="bi bi-clock"></i> ${time}</span>
+                                    <span><i class="bi bi-heart-fill text-danger"></i> ${r.likes || 0}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+            </div>`;
     }
 
-    function escapeHTML(str) {
-        if (str === null || typeof str === 'undefined') return '';
-        return $('<div>').text(String(str)).html();
-    }
-
-    // --- INICIALIZACIÓN ---
-    renderProfileInfo(); // Renderiza el header del perfil y configura los botones de acción principales
+    function escapeHTML(str) { return str ? $('<div>').text(String(str)).html() : ''; }
     
-    // Configurar y mostrar pestañas después de cargar la info del perfil
-    if ($profileContentTabsContainer.length) {
-        renderPublishedRecipes();
-        renderSavedRecipes(); // Esta función ahora decide si mostrarse
-        $profileContentTabsContainer.show(); // Mostrar el contenedor de las pestañas
+    function formatTimeLocal(m) {
+        m = parseInt(m); if(!m) return '0 min';
+        let h = Math.floor(m/60), min = m%60;
+        return (h>0 ? h+'h ' : '') + (min>0 ? min+'min' : '');
     }
 
+    /**
+     * Escuchamos el evento global disparado por notifications.js
+     * para obtener los datos del usuario logueado de forma segura.
+     */
+    $(document).on('sessionStatusChecked', function(event, sessionResponse) {
+        if (sessionResponse && sessionResponse.is_logged_in) {
+            currentUserLocal = sessionResponse.data;
+            console.log("profile.js: Sesión detectada para acciones de seguimiento.");
+        }
+    });
 });

@@ -1,542 +1,472 @@
 // TFG/js/admin.js
-/**
- * admin.js
- * --------
- * Script principal para el Panel de Administración (admin.html).
- * Se encarga de renderizar tablas de datos, manejar eventos de la interfaz
- * y aplicar lógica de permisos basada en el rol del administrador.
- * 
- * Dependencias: jQuery, Bootstrap JS, js/data/admin-data.js, js/redirect/auth-guard-admin.js
- */
+
 $(document).ready(function() {
-    console.log("admin.js: DOM listo. Esperando evento 'authGuardAdminPassed'.");
+    console.log("admin.js: DOM listo. Esperando guardián...");
 
-    // --- Variables de estado del script ---
-    let currentAdminUser = null; // Almacena los datos del admin autenticado.
-    window.adminPageInitialized = false; // Bandera para evitar inicialización múltiple.
+    let currentAdminUser = null;
+    let localData = { recipes: [], users: [], commentReports: [], supportTickets: [], diets: [] };
+    
+    // Variables de estado
+    let currentReport = null; 
+    let currentTicket = null;
+    
+    // --- ESTADO DE ORDENACIÓN ---
+    let sortState = {
+        column: '',
+        direction: 'asc', // 'asc' o 'desc'
+        key: '' // 'recipes', 'users', etc.
+    };
 
-    // --- PUNTO DE ENTRADA PRINCIPAL: Esperar la confirmación del guardián ---
+    // Modales
+    const modals = {};
+
+    // --- ENTRADA ---
     $(document).on('authGuardAdminPassed', function(event, adminData) {
-        if (window.adminPageInitialized) {
-            console.warn("admin.js: La página ya fue inicializada. Ignorando evento duplicado.");
-            return;
-        }
-        console.log("admin.js: 'authGuardAdminPassed' RECIBIDO. Inicializando panel para:", adminData);
-        currentAdminUser = adminData;
+        if (window.adminPageInitialized) return;
         window.adminPageInitialized = true;
-        initAdminPage(currentAdminUser);
+        currentAdminUser = adminData;
+        console.log("admin.js: Inicializando para", currentAdminUser.username);
+
+        initModals();
+        loadDashboardData();
+        setupEvents();
     });
 
-    // --- FALLBACK DE SEGURIDAD ---
-    setTimeout(function() {
-        if (!window.adminPageInitialized && $('#adminTabsContent').length) {
-            console.warn("admin.js: Timeout. No se recibió 'authGuardAdminPassed'. Mostrando error.");
-            $('main.container').first().html(
-                `<div class="alert alert-danger mt-4" role="alert"><h4><i class="fas fa-exclamation-triangle me-2"></i>Acceso Denegado</h4><p>No se pudo verificar tu autorización. <a href="logReg.html#login" class="alert-link">Inicia sesión</a> como administrador.</p><a href="index.html" class="btn btn-secondary mt-2">Volver al inicio</a></div>`
-            );
-        }
-    }, 3500);
-
-    // --- VARIABLES GLOBALES DEL MÓDULO ---
-    let recipeData = [],
-        userData = [],
-        commentReportData = [],
-        supportTicketData = [];
-    let currentSort = { column: '', direction: 'asc', tableId: '' };
-
-    let confirmRoleChangeModal, confirmDeleteModal, superAdminWarningModal,
-        permissionDeniedModal, viewCommentReportModal, viewSupportTicketModal,
-        confirmHideReportedCommentModal, confirmClearRecipeReportsModal;
-
-    let currentUserToChangeRole = null,
-        itemToDelete = null,
-        currentReportToView = null,
-        currentTicketToView = null,
-        reportedCommentToManageInfo = null,
-        recipeToClearReportsInfo = null;
-
-    const ROLE_MAP = { 1: 'SuperAdministrador', 2: 'Administrador', 3: 'Usuario' };
-    const ROLE_HIERARCHY = { 'SuperAdministrador': 3, 'Administrador': 2, 'Usuario': 1 };
-
-    /**
-     * Orquesta la inicialización completa de la página de administración.
-     */
-    function initAdminPage(loggedInAdminData) {
-        console.log("admin.js: initAdminPage() para admin:", loggedInAdminData.username);
-        const currentAdminRoleName = ROLE_MAP[loggedInAdminData.id_rol] || 'Desconocido';
-
-        if (typeof mockAdminData === 'undefined') {
-            displayErrorInAllTables("Error crítico: Faltan datos de ejemplo (mockAdminData).");
-            return;
-        }
-
-        recipeData = (mockAdminData.recipes || []).map(r => ({ ...r, reports: Number(r.reports) || 0 }));
-        userData = (mockAdminData.users || []).map(u => ({ ...u, roleName: ROLE_MAP[u.id_rol] || u.role || 'Usuario' }));
-        commentReportData = mockAdminData.commentReports || [];
-        supportTicketData = mockAdminData.supportTickets || [];
-
-        initializeModals();
-        renderAllTables(currentAdminRoleName);
-        setupEventListeners(currentAdminRoleName);
-        initialTableMessages();
-
-        $('#adminPageTitle').text(`Panel de Administración - Rol: ${escapeHTML(currentAdminRoleName)}`);
-        $('#adminPageSubtitle').text(`Bienvenido, ${escapeHTML(loggedInAdminData.username)}.`);
-        console.log("admin.js: Página de admin completamente inicializada.");
-    }
-
-    /**
-     * Inicializa todas las instancias de modales de Bootstrap.
-     */
-    function initializeModals() {
-        console.log("admin.js: Inicializando instancias de modales...");
-        const getModalInstance = (id) => {
+    function initModals() {
+        const ids = [
+            'confirmDeleteModal', 'confirmRoleChangeModal', 
+            'superAdminWarningModal', 'permissionDeniedModal',
+            'viewCommentReportModal', 'viewSupportTicketModal',
+            'confirmHideReportedCommentModal'
+        ];
+        ids.forEach(id => {
             const el = document.getElementById(id);
-            if (el) return new bootstrap.Modal(el);
-            console.error(`Admin.js: Elemento HTML para modal #${id} NO ENCONTRADO.`);
-            return null;
-        };
-        confirmRoleChangeModal = getModalInstance('confirmRoleChangeModal');
-        confirmDeleteModal = getModalInstance('confirmDeleteModal');
-        superAdminWarningModal = getModalInstance('superAdminWarningModal');
-        permissionDeniedModal = getModalInstance('permissionDeniedModal');
-        viewCommentReportModal = getModalInstance('viewCommentReportModal');
-        viewSupportTicketModal = getModalInstance('viewSupportTicketModal');
-        confirmHideReportedCommentModal = getModalInstance('confirmHideReportedCommentModal');
-        confirmClearRecipeReportsModal = getModalInstance('confirmClearRecipeReportsModal');
-    }
-
-    /**
-     * Muestra un mensaje de error en todas las tablas.
-     */
-    function displayErrorInAllTables(message) {
-        ['recipeTableBody', 'userTableBody', 'commentReportsTableBody', 'supportTicketsTableBody'].forEach(id => {
-            const $el = $('#' + id);
-            let colspan = (id.includes('Comment') || id.includes('Support')) ? 6 : 7;
-            if ($el.length) $el.html(`<tr><td colspan="${colspan}" class="text-center t-danger p-3"><text>${escapeHTML(message)}</text></td></tr>`);
+            if(el) modals[id] = new bootstrap.Modal(el);
         });
     }
 
-    /**
-     * Llama a todas las funciones `render...` para poblar las tablas.
-     */
-    function renderAllTables(currentAdminRoleName) {
-        renderRecipes(recipeData);
-        renderUsers(userData, currentAdminRoleName);
-        renderCommentReports(commentReportData);
-        renderSupportTickets(supportTicketData);
+    function loadDashboardData() {
+        AdminService.getAllData().done(function(res) {
+            if (res.success) {
+                localData = res.data;
+                renderAllTables();
+            } else {
+                console.error("Error cargando datos: " + res.message);
+            }
+        }).fail(() => console.error("Error red admin"));
     }
 
-    // --- FUNCIONES DE RENDERIZADO ---
+    function loadAll() {
+        loadDashboardData(); // Reutilizamos para recargar todo
+    }
 
+    function renderAllTables() {
+        // Filtrar datos usando los inputs de búsqueda actuales
+        const termR = $('#recipeSearch').val().toLowerCase();
+        const termU = $('#userSearch').val().toLowerCase();
+        const termC = $('#commentReportSearch').val().toLowerCase();
+        const termS = $('#supportTicketSearch').val().toLowerCase();
+        const termD = $('#dietSearch').val().toLowerCase();
+
+        renderRecipes(filterData(localData.recipes, termR));
+        renderUsers(filterData(localData.users, termU));
+        renderCommentReports(filterData(localData.commentReports, termC));
+        renderSupportTickets(filterData(localData.supportTickets, termS));
+        renderDiets(filterData(localData.diets, termD));
+    }
+
+    // Helper para filtrar arrays de objetos
+    function filterData(array, term) {
+        if (!term) return array;
+        return array.filter(item => Object.values(item).some(val => String(val).toLowerCase().includes(term)));
+    }
+
+    // --- RENDERIZADORES ---
     function renderRecipes(recipes) {
-        const $tbody = $('#recipeTableBody'); if (!$tbody.length) return; $tbody.empty();
-        if (!recipes.length) { $tbody.html('<tr><td colspan="7" class="text-center text-muted p-3">No hay recetas para mostrar.</td></tr>'); return; }
-        recipes.forEach(recipe => {
-            const reportCount = Number(recipe.reports) || 0;
-            const reportIndicatorClass = reportCount > 0 ? 't-danger fw-bold' : 'text-success';
-            const reportIndicatorContent = reportCount > 0 ? reportCount : '<i class="bi bi-check-circle-fill"></i>';
-            const reportActionsHTML = reportCount > 0 ? `<li><a class="dropdown-item clear-recipe-reports-btn" href="#" data-item-id="${recipe.id}" data-item-name="${escapeHTML(recipe.title)}"><i class="bi bi-bookmark-check-fill me-2"></i>Limpiar Denuncias</a></li>` : '';
-            const tr = `
+        const $t = $('#recipeTableBody').empty();
+        if(!recipes || !recipes.length) return $t.html('<tr><td colspan="7" class="text-center p-3 text-muted">No hay recetas.</td></tr>');
+        
+        recipes.forEach(r => {
+            const dateStr = new Date(r.date).toLocaleDateString();
+            const badgeClass = r.status === 'publica' ? 'bg-success' : 'bg-secondary';
+            const reportsCount = parseInt(r.reports) || 0;
+            // Badge rojo si tiene reportes
+            const reportBadge = reportsCount > 0 
+                ? `<span class="badge bg-danger rounded-pill">${reportsCount}</span>` 
+                : '<i class="bi bi-check-circle text-success"></i>';
+            
+            // Opción extra para limpiar denuncias si > 0
+            const clearOption = reportsCount > 0 
+                ? `<li><a class="dropdown-item text-warning action-btn" href="#" data-action="clear_reports" data-id="${r.id}" data-name="${escapeHTML(r.titulo)}"><i class="bi bi-eraser me-2"></i>Limpiar Denuncias</a></li>` 
+                : '';
+
+            $t.append(`
                 <tr>
-                    <td class="fw-semibold">${recipe.id}</td>
-                    <td>${escapeHTML(recipe.title)}</td>
-                    <td><a href="profile.html?userId=${recipe.authorId}" target="_blank">${escapeHTML(recipe.author)}</a></td>
-                    <td>${formatDate(recipe.date)}</td>
-                    <td><span class="badge ${getStatusBadgeClass(recipe.status)}">${escapeHTML(recipe.status)}</span></td>
-                    <td class="text-center"><span class="report-indicator ${reportIndicatorClass}" title="${reportCount} denuncia${reportCount !== 1 ? 's' : ''}">${reportIndicatorContent}</span></td>
+                    <td class="fw-bold">${r.id}</td>
+                    <td>${escapeHTML(r.titulo)}</td>
+                    <td><a href="profile.html?userId=${r.authorId}" target="_blank" class="text-decoration-none">${escapeHTML(r.author)}</a></td>
+                    <td>${dateStr}</td>
+                    <td><span class="badge ${badgeClass}">${r.status}</span></td>
+                    <td class="text-center">${reportBadge}</td>
                     <td class="text-end">
-                        <div class="dropdown"><button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown"><i class="fas fa-ellipsis-h"></i></button>
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="dropdown"><i class="fas fa-ellipsis-h"></i></button>
                             <ul class="dropdown-menu dropdown-menu-end">
-                                <li><a class="dropdown-item" href="recipe.html?id=${recipe.id}" target="_blank"><i class="bi bi-eye-fill me-2"></i>Ver</a></li>
-                                ${reportActionsHTML}
+                                <li><a class="dropdown-item" href="recipe.html?id=${r.id}" target="_blank"><i class="bi bi-eye me-2"></i>Ver Receta</a></li>
+                                ${clearOption}
                                 <li><hr class="dropdown-divider"></li>
-                                <li><a class="dropdown-item t-danger delete-item-btn" href="#" data-item-id="${recipe.id}" data-item-name="${escapeHTML(recipe.title)}" data-item-type="recipe"><i class="bi bi-trash-fill me-2"></i>Eliminar</a></li>
+                                <li><a class="dropdown-item text-danger action-btn" href="#" data-action="delete" data-type="recipe" data-id="${r.id}" data-name="${escapeHTML(r.titulo)}"><i class="bi bi-trash me-2"></i>Eliminar</a></li>
                             </ul>
                         </div>
                     </td>
-                </tr>`;
-            $tbody.append(tr);
+                </tr>`);
         });
     }
 
-    function renderUsers(users, currentAdminRoleName) {
-        const $tbody = $('#userTableBody'); if (!$tbody.length) return; $tbody.empty();
-        if (!users.length) { $tbody.html('<tr><td colspan="7" class="text-center text-muted p-3">No hay usuarios para mostrar.</td></tr>'); return; }
-        const loggedInAdminRoleLevel = ROLE_HIERARCHY[currentAdminRoleName] || 0;
-        users.forEach(user => {
-            const targetUserRoleName = user.roleName;
-            const targetUserRoleLevel = ROLE_HIERARCHY[targetUserRoleName] || 0;
-            let switchDisabled = '', actionButtonDisabled = '';
-            if (targetUserRoleName === 'SuperAdministrador' || (targetUserRoleName === 'Administrador' && loggedInAdminRoleLevel < ROLE_HIERARCHY['SuperAdministrador']) || (loggedInAdminRoleLevel <= targetUserRoleLevel && currentAdminRoleName !== 'SuperAdministrador')) {
-                switchDisabled = 'disabled';
-                actionButtonDisabled = 'disabled';
-            }
-            const isTargetCheckedForAdmin = targetUserRoleName === 'Administrador';
-            const switchId = `roleSwitch-${user.id}`;
-            const deleteActionHtml = !actionButtonDisabled ? `<li><hr class="dropdown-divider"></li><li><a class="dropdown-item t-danger delete-item-btn" href="#" data-item-id="${user.id}" data-item-name="${escapeHTML(user.username)}" data-item-type="user"><i class="bi bi-trash-fill me-2"></i>Eliminar</a></li>` : '';
-            const tr = `
+    function renderUsers(users) {
+        const $t = $('#userTableBody').empty();
+        if(!users || !users.length) return $t.html('<tr><td colspan="6" class="text-center p-3 text-muted">No hay usuarios.</td></tr>');
+        
+        const ROLE_NAMES = {1:'SuperAdministrador', 2:'Administrador', 3:'Usuario'};
+        const ROLE_BADGES = {1:'bg-danger', 2:'bg-primary', 3:'bg-secondary'};
+
+        users.forEach(u => {
+            const roleName = ROLE_NAMES[u.id_rol] || 'Desconocido';
+            const badge = ROLE_BADGES[u.id_rol] || 'bg-light text-dark';
+            
+            const myRol = parseInt(currentAdminUser.id_rol);
+            const targetRol = parseInt(u.id_rol);
+            const canEdit = (myRol < targetRol); 
+            const isSelf = (parseInt(u.id) === parseInt(currentAdminUser.user_id));
+            const isDisabled = (!canEdit || isSelf) ? 'disabled' : '';
+
+            const isChecked = (targetRol === 1 || targetRol === 2) ? 'checked' : '';
+
+            $t.append(`
                 <tr>
-                    <td class="fw-semibold">${user.id}</td>
-                    <td>${escapeHTML(user.username)}</td>
-                    <td><a href="mailto:${escapeHTML(user.email)}">${escapeHTML(user.email)}</a></td>
-                    <td>${formatDate(user.joindate)}</td>
-                    <td><span class="badge ${getRoleBadgeClass(targetUserRoleName)}">${escapeHTML(targetUserRoleName)}</span></td>
-                    <td class="text-center"><div class="form-check form-switch d-inline-block" title="${switchDisabled?'Permiso denegado':(isTargetCheckedForAdmin?'Quitar rol Admin':'Hacer Admin')}"><input class="form-check-input role-switch" type="checkbox" role="switch" id="${switchId}" data-user-id="${user.id}" data-username="${escapeHTML(user.username)}" data-current-role="${targetUserRoleName}" ${isTargetCheckedForAdmin?'checked':''} ${switchDisabled}></div></td>
-                    <td class="text-end"><div class="dropdown"><button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" ${actionButtonDisabled}><i class="fas fa-ellipsis-h"></i></button><ul class="dropdown-menu dropdown-menu-end"><li><a class="dropdown-item" href="profile.html?userId=${user.id}" target="_blank"><i class="bi bi-person-circle me-2"></i>Ver perfil</a></li>${deleteActionHtml}</ul></div></td>
-                </tr>`;
-            $tbody.append(tr);
+                    <td class="fw-bold">${u.id}</td>
+                    <td>${escapeHTML(u.username)}</td>
+                    <td>${escapeHTML(u.email)}</td>
+                    <td>${formatDate(u.joindate)}</td>
+                    <td><span class="badge ${badge}">${roleName}</span></td>
+                    <td class="text-center">
+                        <div class="form-check form-switch d-inline-block">
+                            <input class="form-check-input role-switch" type="checkbox" 
+                                data-id="${u.id}" data-username="${escapeHTML(u.username)}" data-rol="${targetRol}"
+                                ${isChecked} ${isDisabled}>
+                        </div>
+                    </td>
+                    <td class="text-end">
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="dropdown" ${isDisabled}><i class="fas fa-ellipsis-h"></i></button>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li><a class="dropdown-item" href="profile.html?userId=${u.id}" target="_blank"><i class="bi bi-person me-2"></i>Ver Perfil</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item text-danger action-btn" href="#" data-action="delete" data-type="user" data-id="${u.id}" data-name="${escapeHTML(u.username)}"><i class="bi bi-trash me-2"></i>Eliminar</a></li>
+                            </ul>
+                        </div>
+                    </td>
+                </tr>`);
         });
     }
 
     function renderCommentReports(reports) {
-        const $tbody = $('#commentReportsTableBody'); if (!$tbody.length) return; $tbody.empty();
-        if (!reports.length) { $tbody.html('<tr><td colspan="6" class="text-center text-muted p-3">No hay reportes de comentarios.</td></tr>'); return; }
-        reports.forEach(report => {
-            const tr = `
+        const $t = $('#commentReportsTableBody').empty();
+        if(!reports || !reports.length) return $t.html('<tr><td colspan="5" class="text-center p-3 text-muted">Sin reportes pendientes.</td></tr>');
+        
+        reports.forEach(r => {
+            let statusBadge = 'bg-secondary';
+            if(r.status === 'Pendiente') statusBadge = 'bg-warning text-dark';
+            else if(r.status === 'Revisado') statusBadge = 'bg-success';
+            else if(r.status === 'Comentario Ocultado') statusBadge = 'bg-danger';
+
+            $t.append(`
                 <tr>
-                    <td><a href="recipe.html?id=${report.recipeId}#comment-${report.commentId}" target="_blank" title="${escapeHTML(report.recipeTitle)}">${escapeHTML(report.recipeTitle.substring(0,30))}${report.recipeTitle.length>30?'...':''}</a></td>
-                    <td><a href="profile.html?userId=${report.userId}" target="_blank">${escapeHTML(report.username)}</a></td>
-                    <td class="comment-content-cell" title="${escapeHTML(report.commentContent)}">${escapeHTML(report.commentContent.substring(0,50))}${report.commentContent.length>50?'...':''}</td>
-                    <td>${formatDate(report.reportDate)}</td>
-                    <td><span class="badge ${getReportStatusBadgeClass(report.status)}">${escapeHTML(report.status)}</span></td>
-                    <td class="text-end"><button class="btn btn-sm btn-outline-primary view-comment-report-btn" data-report-id="${report.id}" title="Ver reporte"><i class="bi bi-eye-fill me-1"></i>Detalles</button></td>
-                </tr>`;
-            $tbody.append(tr);
+                    <td><a href="recipe.html?id=${r.recipeId}" target="_blank">${escapeHTML(r.recipeTitle)}</a></td>
+                    <td>${escapeHTML(r.username)}</td>
+                    <td><span class="badge ${statusBadge}">${r.status}</span></td>
+                    <td>${formatDate(r.reportDate)}</td>
+                    <td class="text-end">
+                        <button class="btn btn-sm btn-primary action-btn" 
+                                data-action="view_report" 
+                                data-id="${r.id}">
+                            <i class="bi bi-eye"></i> Detalles
+                        </button>
+                    </td>
+                </tr>`);
         });
     }
 
     function renderSupportTickets(tickets) {
-        const $tbody = $('#supportTicketsTableBody'); if (!$tbody.length) return; $tbody.empty();
-        if (!tickets.length) { $tbody.html('<tr><td colspan="6" class="text-center text-muted p-3">No hay tickets de soporte.</td></tr>'); return; }
-        tickets.forEach(ticket => {
-            const tr = `
-                <tr>
-                    <td>${escapeHTML(ticket.name)}</td>
-                    <td><a href="mailto:${escapeHTML(ticket.email)}">${escapeHTML(ticket.email)}</a></td>
-                    <td class="support-message-cell" title="${escapeHTML(ticket.message)}">${escapeHTML(ticket.message.substring(0,50))}${ticket.message.length>50?'...':''}</td>
-                    <td>${formatDate(ticket.submissionDate)}</td>
-                    <td><span class="badge ${getSupportTicketStatusBadgeClass(ticket.status)} support-ticket-status-${ticket.id}">${escapeHTML(ticket.status)}</span></td>
-                    <td class="text-end"><button class="btn btn-sm btn-outline-primary view-support-ticket-btn" data-ticket-id="${ticket.id}" title="Ver ticket"><i class="bi bi-eye-fill me-1"></i>Ver</button></td>
-                </tr>`;
-            $tbody.append(tr);
-        });
-    }
+        const $t = $('#supportTicketsTableBody').empty();
+        if(!tickets || !tickets.length) return $t.html('<tr><td colspan="5" class="text-center p-3 text-muted">Sin tickets.</td></tr>');
 
-    /**
-     * Configura todos los manejadores de eventos.
-     */
-    function setupEventListeners(currentAdminRoleName) {
-        const loggedInAdminRoleLevel = ROLE_HIERARCHY[currentAdminRoleName] || 0;
-
-        // --- Evento general de click para todas las acciones delegadas ---
-        $('#adminTabsContent').off('click.adminactions').on('click.adminactions', function(event) {
-            const $target = $(event.target);
-            const $viewCommentReportBtn = $target.closest('.view-comment-report-btn');
-            const $viewSupportTicketBtn = $target.closest('.view-support-ticket-btn');
-            const $deleteBtn = $target.closest('.delete-item-btn');
-            const $clearRecipeReportsBtn = $target.closest('.clear-recipe-reports-btn');
+        tickets.forEach(t => {
+            const statusBadge = t.status === 'Pendiente' ? 'bg-warning text-dark' : 'bg-success';
+            const dateStr = t.submissionDate ? new Date(t.submissionDate).toLocaleDateString() : 'N/A';
             
-            // <-- CAMBIO CLAVE: Ya no se usa parseInt() aquí, se pasa el valor como string.
-            if ($viewCommentReportBtn.length) { event.preventDefault(); handleViewCommentReport($viewCommentReportBtn.data('report-id')); return; }
-            if ($viewSupportTicketBtn.length) { event.preventDefault(); handleViewSupportTicket($viewSupportTicketBtn.data('ticket-id')); return; }
-            if ($deleteBtn.length) { event.preventDefault(); handleDeleteItem($deleteBtn, loggedInAdminRoleLevel, currentAdminRoleName); return; }
-            if ($clearRecipeReportsBtn.length) { event.preventDefault(); handleClearRecipeReports($clearRecipeReportsBtn); return; }
+            $t.append(`
+                <tr>
+                    <td>${escapeHTML(t.name)}</td>
+                    <td><a href="mailto:${escapeHTML(t.email)}">${escapeHTML(t.email)}</a></td>
+                    <td><span class="badge ${statusBadge}">${t.status}</span></td>
+                    <td>${dateStr}</td>
+                    <td class="text-end">
+                        <button class="btn btn-sm btn-primary action-btn" 
+                                data-action="view_ticket" 
+                                data-id="${t.id}">
+                             <i class="bi bi-eye"></i> Ver
+                        </button>
+                    </td>
+                </tr>`);
         });
-
-        // Listeners para Búsqueda y Ordenación
-        $('#adminTabsContent').off('click.sort').on('click.sort', '.sortable', function() { sortTable($(this).data('column'), $(this).closest('table').find('tbody').attr('id')); });
-        $('#recipeSearch').off('input.search').on('input.search', function(){ renderRecipes(recipeData.filter(r => Object.values(r).some(v => String(v).toLowerCase().includes($(this).val().toLowerCase())))); });
-        $('#userSearch').off('input.search').on('input.search', function(){ renderUsers(userData.filter(u => Object.values(u).some(v => String(v).toLowerCase().includes($(this).val().toLowerCase()))), currentAdminRoleName); });
-        $('#commentReportSearch').off('input.search').on('input.search', function(){ renderCommentReports(commentReportData.filter(r => Object.values(r).some(v => String(v).toLowerCase().includes($(this).val().toLowerCase())))); });
-        $('#supportTicketSearch').off('input.search').on('input.search', function(){ renderSupportTickets(supportTicketData.filter(t => Object.values(t).some(v => String(v).toLowerCase().includes($(this).val().toLowerCase())))); });
-        
-        // Listener para el Switch de Roles
-        $('#userTableBody').off('change.role').on('change.role', '.role-switch', function() { handleChangeRole($(this), loggedInAdminRoleLevel, currentAdminRoleName); });
-
-        // Listeners para botones DENTRO de los modales
-        $('#confirmRoleChangeBtn').off('click.role').on('click.role', handleConfirmChangeRole);
-        $('#confirmRoleChangeModal').off('hidden.bs.modal.role').on('hidden.bs.modal.role', handleCancelChangeRole);
-        $('#confirmDeleteBtn').off('click.delete').on('click.delete', handleConfirmDelete);
-        $('#hideReportedCommentActionBtn').off('click.report').on('click.report', handleHideComment);
-        $('#finalHideReportedCommentBtn').off('click.report').on('click.report', handleConfirmHideComment);
-        $('#markCommentReportAsReviewedBtn').off('click.report').on('click.report', handleMarkReportAsReviewed);
-        $('#markTicketAsSolvedBtn').off('click.ticket').on('click.ticket', handleMarkTicketAsSolved);
-        $('#finalClearRecipeReportsBtn').off('click.recipe').on('click.recipe', handleConfirmClearRecipeReports);
     }
     
-    // --- MANEJADORES DE ACCIONES ESPECÍFICAS ---
-
-    /** Maneja la apertura del modal para ver un reporte de comentario. */
-    function handleViewCommentReport(reportId) {
-        // <-- CAMBIO CLAVE: Comparamos el `reportId` (string) con `r.id` (que también es string)
-        currentReportToView = commentReportData.find(r => String(r.id) === String(reportId));
-        if (currentReportToView) {
-            $('#reportDetailRecipeTitle').text(currentReportToView.recipeTitle);
-            $('#reportDetailRecipeLink').attr('href', `recipe.html?id=${currentReportToView.recipeId}#comment-${currentReportToView.commentId}`);
-            $('#reportDetailUsername').text(currentReportToView.username);
-            $('#reportDetailUserLink').attr('href', `profile.html?userId=${currentReportToView.userId}`);
-            $('#reportDetailDate').text(formatDate(currentReportToView.reportDate));
-            $('#reportDetailStatus').text(currentReportToView.status).attr('class', `badge ${getReportStatusBadgeClass(currentReportToView.status)}`);
-            $('#reportDetailCommentContent').text(currentReportToView.commentContent);
-            const isPending = currentReportToView.status?.toLowerCase() === 'pendiente';
-            $('#markCommentReportAsReviewedBtn').data('report-id', currentReportToView.id).prop('disabled', !isPending);
-            $('#hideReportedCommentActionBtn').data({'report-id': currentReportToView.id, 'comment-id': currentReportToView.commentId}).prop('disabled', !isPending);
-            $('#viewReportedCommentOriginalLink').attr('href', `recipe.html?id=${currentReportToView.recipeId}#comment-${currentReportToView.commentId}`);
-            if (viewCommentReportModal) viewCommentReportModal.show(); else console.error("Instancia del modal de reportes de comentarios no existe.");
-        } else { console.warn(`No se encontró reporte con ID ${reportId}.`); }
-    }
-
-    /** Maneja la apertura del modal para ver un ticket de soporte. */
-    function handleViewSupportTicket(ticketId) {
-        // <-- CAMBIO CLAVE: Comparamos el `ticketId` (string) con `t.id` (que también es string)
-        currentTicketToView = supportTicketData.find(t => String(t.id) === String(ticketId));
-        if (currentTicketToView) {
-            $('#ticketDetailName').text(currentTicketToView.name);
-            $('#ticketDetailEmail').text(currentTicketToView.email).attr('href', `mailto:${currentTicketToView.email}`);
-            $('#ticketDetailDate').text(formatDate(currentTicketToView.submissionDate));
-            $('#ticketDetailStatus').text(currentTicketToView.status).attr('class', `badge ${getSupportTicketStatusBadgeClass(currentTicketToView.status)}`);
-            $('#ticketDetailMessage').text(currentTicketToView.message);
-            $('#markTicketAsSolvedBtn').data('ticket-id', currentTicketToView.id).prop('disabled', currentTicketToView.status === 'Solucionado');
-            if (viewSupportTicketModal) viewSupportTicketModal.show(); else console.error("Instancia del modal de tickets de soporte no existe.");
-        } else { console.warn(`No se encontró ticket con ID ${ticketId}.`); }
-    }
-
-    function handleDeleteItem($deleteBtn, loggedInAdminRoleLevel, currentAdminRoleName) {
-        const itemId = parseInt($deleteBtn.data('item-id'));
-        const itemName = $deleteBtn.data('item-name');
-        const itemType = $deleteBtn.data('item-type');
-        if (itemType === 'user') {
-            const userToDel = userData.find(u => u.id === itemId);
-            if (!userToDel) return;
-            const userToDelRole = userToDel.roleName;
-            if (userToDelRole === 'SuperAdministrador') { showPermissionDeniedModal("SuperAdmin no se elimina."); return; }
-            if (loggedInAdminRoleLevel <= (ROLE_HIERARCHY[userToDelRole] || 0) && currentAdminRoleName !== 'SuperAdministrador') { showPermissionDeniedModal("No puedes eliminar un usuario de rango igual o superior."); return; }
-        }
-        itemToDelete = { itemId, itemName, itemType };
-        $('#deleteItemName').text(`${itemType === 'recipe' ? 'la receta' : itemType === 'user' ? 'el usuario' : 'el elemento'} "${escapeHTML(itemName)}"`);
-        if (confirmDeleteModal) confirmDeleteModal.show();
-    }
+    function renderDiets(diets) {
+        const $t = $('#dietTableBody').empty();
+        if(!diets || !diets.length) return $t.html('<tr><td colspan="3" class="text-center text-muted">No hay dietas.</td></tr>');
     
-    function handleClearRecipeReports($clearBtn) {
-        recipeToClearReportsInfo = { recipeId: parseInt($clearBtn.data('item-id')), recipeName: $clearBtn.data('item-name') };
-        $('#clearRecipeReportsName').text(recipeToClearReportsInfo.recipeName);
-        if (confirmClearRecipeReportsModal) confirmClearRecipeReportsModal.show();
-    }
-    
-    function handleChangeRole($switchElement, loggedInAdminRoleLevel, currentAdminRoleName) {
-        const targetUserId = parseInt($switchElement.data('user-id'));
-        const targetUser = userData.find(u => u.id === targetUserId);
-        if (!targetUser) return;
-        const targetUserCurrentRole = targetUser.roleName;
-        const targetUserRoleLevel = ROLE_HIERARCHY[targetUserCurrentRole] || 0;
-        if (targetUserCurrentRole === 'SuperAdministrador') { if (superAdminWarningModal) superAdminWarningModal.show(); $switchElement.prop('checked', true); return; }
-        if (loggedInAdminRoleLevel <= targetUserRoleLevel && currentAdminRoleName !== 'SuperAdministrador') { showPermissionDeniedModal("No puedes modificar un rol igual o superior."); $switchElement.prop('checked', (targetUserCurrentRole === 'Administrador')); return; }
-        const newRole = $switchElement.is(':checked') ? 'Administrador' : 'Usuario';
-        currentUserToChangeRole = { userId: targetUserId, userName: targetUser.username, newRole, oldRole: targetUserCurrentRole, switchElement: $switchElement[0] };
-        $('#roleChangeUserName').text(currentUserToChangeRole.userName);
-        $('#roleChangeNewRole').text(currentUserToChangeRole.newRole);
-        if (confirmRoleChangeModal) confirmRoleChangeModal.show();
+        diets.forEach(d => {
+            $t.append(`
+                <tr>
+                    <td>${d.id}</td>
+                    <td>${escapeHTML(d.nombre_dieta)}</td>
+                    <td class="text-end">
+                        <button class="btn btn-sm btn-danger action-btn" data-action="delete" data-type="diet" data-id="${d.id}" data-name="${escapeHTML(d.nombre_dieta)}">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </td>
+                </tr>`);
+        });
     }
 
-    function handleConfirmChangeRole() {
-        if (currentUserToChangeRole) {
-            const userIndex = userData.findIndex(u => u.id === currentUserToChangeRole.userId);
-            if (userIndex !== -1) {
-                userData[userIndex].roleName = currentUserToChangeRole.newRole;
-                const newRoleId = Object.keys(ROLE_MAP).find(k => ROLE_MAP[k] === currentUserToChangeRole.newRole);
-                if (newRoleId) userData[userIndex].id_rol = parseInt(newRoleId);
-                renderUsers(userData, currentAdminUser ? (ROLE_MAP[currentAdminUser.id_rol] || 'Desconocido') : null);
-            }
-            if (confirmRoleChangeModal) confirmRoleChangeModal.hide();
-        }
-    }
+    // --- FUNCIÓN DE ORDENACIÓN (SORTING CLIENT-SIDE) ---
+    function handleSort(key, column, $header) {
+        const data = localData[key];
+        if (!data || data.length === 0) return;
 
-    function handleCancelChangeRole() {
-        if (currentUserToChangeRole?.switchElement) {
-            const originalCheckedState = (currentUserToChangeRole.oldRole === 'Administrador');
-            $(currentUserToChangeRole.switchElement).prop('checked', originalCheckedState);
-        }
-        currentUserToChangeRole = null;
-    }
-    
-    function handleConfirmDelete() {
-        if (itemToDelete) {
-            const adminRole = currentAdminUser ? (ROLE_MAP[currentAdminUser.id_rol] || 'Desconocido') : null;
-            if (itemToDelete.itemType === 'recipe') {
-                recipeData = recipeData.filter(r => r.id !== itemToDelete.itemId);
-                renderRecipes(recipeData);
-            } else if (itemToDelete.itemType === 'user') {
-                userData = userData.filter(u => u.id !== itemToDelete.itemId);
-                renderUsers(userData, adminRole);
-            }
-            if (confirmDeleteModal) confirmDeleteModal.hide();
-            itemToDelete = null;
-        }
-    }
+        // Alternar dirección
+        const isAsc = (sortState.key === key && sortState.column === column && sortState.direction === 'asc');
+        sortState.direction = isAsc ? 'desc' : 'asc';
+        sortState.column = column;
+        sortState.key = key;
 
-    function handleHideComment() {
-        if (currentReportToView) {
-            reportedCommentToManageInfo = { reportId: currentReportToView.id, commentId: currentReportToView.commentId, recipeTitle: currentReportToView.recipeTitle, action: 'hide' };
-            $('#hideReportedCommentModalBodyText').html(`¿Seguro que quieres <strong>ocultar</strong> el comentario en "<strong>${escapeHTML(reportedCommentToManageInfo.recipeTitle)}</strong>"?`);
-            if (viewCommentReportModal) viewCommentReportModal.hide();
-            if (confirmHideReportedCommentModal) confirmHideReportedCommentModal.show();
-        }
-    }
-    
-    function handleConfirmHideComment() {
-        if (reportedCommentToManageInfo?.action === 'hide') {
-            handleReportAction(reportedCommentToManageInfo.reportId, "Comentario Ocultado");
-            if (confirmHideReportedCommentModal) confirmHideReportedCommentModal.hide();
-            reportedCommentToManageInfo = null;
-        }
-    }
-    
-    function handleMarkReportAsReviewed() {
-        if (currentReportToView) {
-            handleReportAction(currentReportToView.id, 'Revisado');
-        }
-    }
-    
-    function handleMarkTicketAsSolved() {
-        const ticketId = parseInt($(this).data('ticket-id'));
-        if (ticketId) {
-            const ticketIndex = supportTicketData.findIndex(t => t.id === ticketId);
-            if (ticketIndex !== -1) {
-                supportTicketData[ticketIndex].status = "Solucionado";
-                renderSupportTickets(supportTicketData);
-            }
-            $(this).prop('disabled', true);
-            $('#viewSupportTicketModal #ticketDetailStatus').text("Solucionado").attr('class', `badge ${getSupportTicketStatusBadgeClass("Solucionado")}`);
-        }
-    }
-    
-    function handleConfirmClearRecipeReports() {
-        if (recipeToClearReportsInfo) {
-            const recipeIndex = recipeData.findIndex(r => r.id === recipeToClearReportsInfo.recipeId);
-            if (recipeIndex !== -1) recipeData[recipeIndex].reports = 0;
-            renderRecipes(recipeData);
-            if (confirmClearRecipeReportsModal) confirmClearRecipeReportsModal.hide();
-            recipeToClearReportsInfo = null;
-        }
-    }
+        // Reset de iconos en la tabla actual
+        $header.closest('thead').find('i.bi').attr('class', 'bi ms-1 text-muted');
 
-    // --- FUNCIONES HELPER ---
-
-    function handleReportAction(reportId, newStatus) {
-        // <-- CAMBIO CLAVE: Comparamos como strings
-        const reportIndex = commentReportData.findIndex(r => String(r.id) === String(reportId));
-        if (reportIndex !== -1) {
-            commentReportData[reportIndex].status = newStatus;
-            renderCommentReports(commentReportData);
-        }
-        if (viewCommentReportModal && $(viewCommentReportModal._element).hasClass('show')) {
-            viewCommentReportModal.hide();
-        }
-        currentReportToView = null;
-    }
-    
-    function showPermissionDeniedModal(message = "No permitido.") { $('#permissionDeniedMessage').text(message);
-        if (permissionDeniedModal) permissionDeniedModal.show();
-     }
-    function formatDate(dateStr) { if (!dateStr) return 'N/A';
-        try { const d = new Date(dateStr);
-            if (isNaN(d.getTime())) return dateStr;
-            return d.toLocaleDateString('es-ES',
-                {
-                    year: 'numeric',
-                    month: 'short',
-                    day: 'numeric'
-                });
-        } catch (e) { 
-            return dateStr;
-        }
-    }
-    function getStatusBadgeClass(status) { return status === 'Publicado' ? 'bg-success text-white' : 'bg-warning text-dark'; }
-    function getRoleBadgeClass(role) { switch (String(role)) { case 'SuperAdministrador': return 'bg-danger text-white'; case 'Administrador': return 'bg-primary text-white'; default: return 'bg-secondary text-white'; } }
-    function getReportStatusBadgeClass(status) { switch (status?.toLowerCase()) { case 'pendiente': return 'bg-warning text-dark'; case 'revisado': return 'bg-success text-white'; case 'ignorado': return 'bg-secondary text-white'; case 'comentario ocultado': return 'bg-danger text-white'; default: return 'bg-light text-dark'; } }
-    function getSupportTicketStatusBadgeClass(status) { switch (status?.toLowerCase()) { case 'pendiente': return 'bg-warning text-dark'; case 'solucionado': return 'bg-success text-white'; default: return 'bg-light text-dark'; } }
-    function escapeHTML(str) { if (str == null) return ''; return $('<div>').text(String(str)).html(); }
-
-    function sortTable(column, tableBodyId) {
-        if (!tableBodyId) {
-            console.warn("sortTable: tableBodyId no provisto.");
-            return;
-        }
-        const oldTableId = currentSort.tableId;
-
-        // Corregido: ¤tSort.tableId -> && currentSort.tableId
-        // Corregido: ¤tSort.direction -> && currentSort.direction
-        if (currentSort.column === column && currentSort.tableId === tableBodyId && currentSort.direction === 'asc') {
-            currentSort.direction = 'desc';
-        } else {
-            currentSort.direction = 'asc';
-        }
-        currentSort.column = column;
-        currentSort.tableId = tableBodyId;
-
-        updateSortIcons(oldTableId);
-
-        let dataToSort, renderFn;
-        const adminRoleForRender = currentAdminUser ? (ROLE_MAP[currentAdminUser.id_rol] || 'Desconocido') : null;
-
-        switch (tableBodyId) {
-            case 'recipeTableBody': dataToSort = [...(recipeData || [])]; renderFn = renderRecipes; break;
-            case 'userTableBody': dataToSort = [...(userData || [])]; renderFn = (data) => renderUsers(data, adminRoleForRender); break;
-            case 'commentReportsTableBody': dataToSort = [...(commentReportData || [])]; renderFn = renderCommentReports; break;
-            case 'supportTicketsTableBody': dataToSort = [...(supportTicketData || [])]; renderFn = renderSupportTickets; break;
-            default: console.error(`sortTable: Tipo de tabla '${tableBodyId}' desconocido.`); return;
-        }
-
-        dataToSort.sort((a, b) => {
+        // Aplicar ordenación al array
+        data.sort((a, b) => {
             let valA = a[column], valB = b[column];
+
+            // Manejo de nulos
             if (valA == null) valA = '';
             if (valB == null) valB = '';
 
-            const dateCols = ['date', 'joindate', 'reportDate', 'submissionDate'];
-            const numCols = ['reports', 'id'];
-
-            if (numCols.includes(column)) { valA = parseFloat(valA) || 0; valB = parseFloat(valB) || 0; }
-            else if (dateCols.includes(column)) { valA = new Date(valA).getTime() || 0; valB = new Date(valB).getTime() || 0; }
-            else if (typeof valA === 'string' && typeof valB === 'string') { valA = valA.toLowerCase(); valB = valB.toLowerCase(); }
-
-            if (valA < valB) return currentSort.direction === 'asc' ? -1 : 1;
-            if (valA > valB) return currentSort.direction === 'asc' ? 1 : -1;
-            return 0;
+            // Comparación por tipo
+            if (!isNaN(valA) && !isNaN(valB) && valA !== '' && valB !== '') {
+                // Numérico
+                return sortState.direction === 'asc' ? valA - valB : valB - valA;
+            } else {
+                // String o Fecha
+                return sortState.direction === 'asc' 
+                    ? String(valA).localeCompare(String(valB)) 
+                    : String(valB).localeCompare(String(valA));
+            }
         });
-        renderFn(dataToSort);
+
+        // Actualizar icono en el header clicado
+        const iconClass = sortState.direction === 'asc' ? 'bi-caret-up-fill text-orange' : 'bi-caret-down-fill text-orange';
+        $header.find('i.bi').attr('class', 'bi ' + iconClass + ' ms-1');
+
+        renderAllTables();
     }
 
-    function updateSortIcons(prevTableIdCleanup = null) {
-        // Limpiar iconos de la tabla previamente ordenada, si es diferente
-        if (prevTableIdCleanup && prevTableIdCleanup !== currentSort.tableId && document.getElementById(prevTableIdCleanup)) {
-            const $prevPane = $(`#${prevTableIdCleanup}`).closest('.tab-pane');
-            if ($prevPane.length) $prevPane.find('.sortable i').removeClass('fa-sort-up fa-sort-down text-primary').addClass('fa-sort text-muted');
-        }
-        // Limpiar iconos de la tabla actual (para todas las columnas)
-        if (currentSort.tableId && document.getElementById(currentSort.tableId)) {
-            const $currentPane = $(`#${currentSort.tableId}`).closest('.tab-pane');
-            if ($currentPane.length) $currentPane.find('.sortable i').removeClass('fa-sort-up fa-sort-down text-primary').addClass('fa-sort text-muted');
-        }
-        // Aplicar icono a la columna activa en la tabla actual
-        // Corregido: ¤tSort.column -> && currentSort.column
-        if (currentSort.tableId && currentSort.column && document.getElementById(currentSort.tableId)) {
-            const $activePane = $(`#${currentSort.tableId}`).closest('.tab-pane');
-            const $activeIcon = $activePane.find(`.sortable[data-column="${currentSort.column}"] i`);
-            if ($activeIcon.length) $activeIcon.removeClass('fa-sort text-muted').addClass(`fa-sort-${currentSort.direction === 'asc' ? 'up' : 'down'} text-primary`);
-        }
+    // --- EVENTOS ---
+    function setupEvents() {
+        // Buscadores
+        $('#recipeSearch, #userSearch, #commentReportSearch, #supportTicketSearch, #dietSearch').on('input', function() {
+            renderAllTables();
+        });
+
+        // Click en cabeceras para Ordenar (Delegación)
+        $(document).on('click', 'th.sortable', function() {
+            const $th = $(this);
+            const column = $th.data('column');
+            const paneId = $th.closest('.tab-pane').attr('id');
+            
+            // Mapeo de ID de pestaña a clave de localData
+            const tabToKey = {
+                'recipes': 'recipes',
+                'users': 'users',
+                'comment-reports': 'commentReports',
+                'support-tickets': 'supportTickets',
+                'diets': 'diets'
+            };
+
+            handleSort(tabToKey[paneId], column, $th);
+        });
+
+        // Click en Botones de Acción (Delegación)
+        $(document).on('click', '.action-btn', function(e) {
+            e.preventDefault();
+            const $btn = $(this);
+            const action = $btn.data('action');
+            const id = $btn.data('id');
+            const type = $btn.data('type');
+            const name = $btn.data('name');
+
+            if (action === 'delete') {
+                window.pendingDelete = { id, type, name };
+                $('#deleteItemName').text(`${name} (${type})`);
+                modals['confirmDeleteModal'].show();
+            }
+            else if (action === 'view_report') {
+                currentReport = localData.commentReports.find(x => x.id == id);
+                let reportComentDate = new Date(currentReport.reportDate).toLocaleDateString();
+                if(currentReport) {
+                    $('#reportDetailRecipeTitle').text(currentReport.recipeTitle);
+                    $('#reportDetailRecipeLink').attr('href', 'recipe.html?id='+currentReport.recipeId);
+                    $('#reportDetailUserLink').text(currentReport.username).attr('href', 'profile.html?userId='+currentReport.userId);
+                    $('#reportDetailDate').text(reportComentDate);
+                    $('#reportDetailCommentContent').text(currentReport.commentContent);
+                    $('#reportDetailStatus').text(currentReport.status);
+                    $('#viewReportedCommentOriginalLink').attr('href', 'recipe.html?id='+currentReport.recipeId);
+                    
+                    const isPending = currentReport.status === 'Pendiente';
+                    $('#markCommentReportAsReviewedBtn, #hideReportedCommentActionBtn')
+                        .prop('disabled', !isPending).data('id', id);
+
+                    modals['viewCommentReportModal'].show();
+                }
+            }
+            else if (action === 'view_ticket') {
+                currentTicket = localData.supportTickets.find(x => x.id == id);
+                let soporteFecha = new Date(currentTicket.submissionDate).toLocaleDateString();
+                if(currentTicket) {
+                    $('#ticketDetailName').text(currentTicket.name);
+                    $('#ticketDetailEmail').text(currentTicket.email).attr('href', 'mailto:'+currentTicket.email);
+                    $('#ticketDetailDate').text(soporteFecha);
+                    $('#ticketDetailStatus').text(currentTicket.status);
+                    $('#ticketDetailMessage').text(currentTicket.message);
+                    $('#markTicketAsSolvedBtn').data('id', id).prop('disabled', currentTicket.status === 'Solucionado');
+                    modals['viewSupportTicketModal'].show();
+                }
+            }
+            else if (action === 'clear_reports') {
+                if(confirm(`¿Limpiar todas las denuncias de "${name}"?`)) {
+                    AdminService.performAction({ action: 'clear_reports', id: id }).done(loadAll);
+                }
+            }
+        });
+
+        // Confirmar Borrado SECUENCIAL para asegurar Notificación
+        $('#confirmDeleteBtn').off('click').click(function() {
+            const d = window.pendingDelete;
+            if(!d) return;
+
+            const executeDelete = () => {
+                AdminService.performAction({ action: 'delete_'+d.type, id: d.id }).done(() => {
+                    modals['confirmDeleteModal'].hide();
+                    loadAll();
+                });
+            };
+
+            if (d.type === 'recipe' && typeof window.NotificationHelper !== 'undefined') {
+                const recipeTarget = localData.recipes.find(r => r.id == d.id);
+                if (recipeTarget && recipeTarget.authorId) {
+                    const prom = window.NotificationHelper.send(recipeTarget.authorId, 'baneo_receta', d.id);
+                    if (prom && prom.done) {
+                        prom.done(executeDelete);
+                    } else { executeDelete(); }
+                } else { executeDelete(); }
+            } else { executeDelete(); }
+        });
+
+        // Cambio de Rol
+        $(document).on('change', '.role-switch', function() {
+            const $s = $(this);
+            const currentRol = parseInt($s.data('rol')); 
+            const targetRol = $s.is(':checked') ? 2 : 3;
+
+            window.pendingRole = { id: $s.data('id'), role_id: targetRol, name: $s.data('username'), el: $s, old_rol: currentRol };
+            $('#roleChangeUserName').text(window.pendingRole.name);
+            $('#roleChangeNewRole').text(targetRol === 2 ? 'Administrador' : 'Usuario');
+            modals['confirmRoleChangeModal'].show();
+        });
+
+        $('#confirmRoleChangeBtn').off('click').click(function() {
+             const pr = window.pendingRole;
+             AdminService.performAction({ action: 'change_role', id: pr.id, role_id: pr.role_id }).done(() => {
+                window.pendingRole = null; 
+                modals['confirmRoleChangeModal'].hide();
+                loadAll();
+             });
+        });
+
+        document.getElementById('confirmRoleChangeModal').addEventListener('hidden.bs.modal', function () {
+             if (window.pendingRole) {
+                 const shouldBeChecked = (window.pendingRole.old_rol === 2);
+                 window.pendingRole.el.prop('checked', shouldBeChecked);
+                 window.pendingRole = null; 
+             }
+        });
+
+        $('#markTicketAsSolvedBtn').off('click').click(function() {
+            AdminService.performAction({ action: 'solve_ticket', id: $(this).data('id') }).done(() => {
+                 modals['viewSupportTicketModal'].hide(); loadAll();
+            });
+        });
+
+        $('#markCommentReportAsReviewedBtn').off('click').click(function() {
+            AdminService.performAction({ action: 'review_report', id: $(this).data('id') }).done(() => {
+                 modals['viewCommentReportModal'].hide(); loadAll();
+            });
+        });
+
+        $('#hideReportedCommentActionBtn').off('click').click(function() {
+            const rid = $(this).data('id');
+            modals['viewCommentReportModal'].hide();
+            $('#finalHideReportedCommentBtn').data('id', rid);
+            $('#hideReportedCommentModalBodyText').html('¿Ocultar este comentario?');
+            modals['confirmHideReportedCommentModal'].show();
+        });
+
+        $('#finalHideReportedCommentBtn').off('click').click(function() {
+            const rid = $(this).data('id');
+            const executeHide = () => {
+                AdminService.performAction({ action: 'hide_comment', id: rid }).done(() => {
+                     modals['confirmHideReportedCommentModal'].hide();
+                     loadAll();
+                });
+            };
+
+            if (typeof window.NotificationHelper !== 'undefined') {
+                const reportTarget = localData.commentReports.find(c => c.id == rid);
+                if (reportTarget && reportTarget.userId) {
+                    const prom = window.NotificationHelper.send(reportTarget.userId, 'baneo_comentario', reportTarget.recipeId);
+                    if (prom && prom.done) {
+                        prom.done(executeHide);
+                    } else { executeHide(); }
+                } else { executeHide(); }
+            } else { executeHide(); }
+        });
+        
+        $('#addDietForm').off('submit').submit(function(e) {
+            e.preventDefault();
+            const n = $('#newDietName').val().trim();
+            if(n) AdminService.performAction({ action: 'add_diet', nombre: n }).done(() => {
+                $('#newDietName').val(''); loadAll();
+            });
+        });
     }
-    function initialTableMessages() {
-        const createMessageRow = (colspan, message) => `<tr><td colspan="${colspan}" class="text-center text-muted p-3">${escapeHTML(message)}</td></tr>`;
-        const messages = { 
-            r: "Cargando o no hay recetas...",
-            u: "Cargando o no hay usuarios...",
-            cR: "Cargando o no hay reportes...",
-            sT: "Cargando o no hay tickets..."
-        };
-        if (!recipeData.length) $('#recipeTableBody').html(createMessageRow(7, messages.r));
-        if (!userData.length) $('#userTableBody').html(createMessageRow(7, messages.u));
-        if (!commentReportData.length) $('#commentReportsTableBody').html(createMessageRow(6, messages.cR));
-        if (!supportTicketData.length) $('#supportTicketsTableBody').html(createMessageRow(6, messages.sT));
+
+    function formatDate(str) { 
+        if(!str) return 'N/A'; 
+        return new Date(str).toLocaleDateString(); 
+    }
+    
+    function escapeHTML(str) { 
+        if(!str) return ''; 
+        return $('<div>').text(String(str)).html(); 
     }
 });

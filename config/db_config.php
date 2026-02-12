@@ -7,7 +7,7 @@ SERVIDOR
 define('DB_HOST', 'localhost');        // Direccion de servidor al que te conectas
 define('DB_NAME', 'sergisaiz_CookSocial'); // Nombre de tu base de datos
 define('DB_USER', 'sergisaiz_sergisaiz');    // Nombre de usuario de MySQL
-define('DB_PASS', 'Alumno1234');  // Contraseña de MySQL
+define('DB_PASS', '********');  // Contraseña de MySQL
 define('DB_CHARSET', 'utf8mb4');        // Juego de caracteres recomendado
 */
 

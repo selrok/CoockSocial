@@ -1,58 +1,92 @@
+<?php
 // TFG/api/contactUs.php
 
-<?php
-ob_start(); // Evita que warnings previos rompan el JSON
+// 1. Iniciar sesión para validar CSRF o leer datos de sesión si fuera necesario internamente
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+// 2. Cabeceras CORS (Igual que en tus otros archivos)
 header('Content-Type: application/json');
+header('Access-Control-Allow-Origin: https://sergisaiz.com.es'); // O http://localhost
+header('Access-Control-Allow-Methods: POST, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type, Authorization');
+header('Access-Control-Allow-Credentials: true');
 
-try {
-    require_once '../config/db_connection.php';
+require_once __DIR__ . '/../config/db_connection.php'; // $pdo
 
-    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-        throw new Exception("Método no permitido");
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit();
+}
+
+$response = ['success' => false, 'message' => ''];
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $inputJSON = file_get_contents('php://input');
+    $data = json_decode($inputJSON, true);
+
+    if (json_last_error() !== JSON_ERROR_NONE || !$data) {
+        $response['message'] = 'JSON inválido.';
+        http_response_code(400);
+        echo json_encode($response);
+        exit;
     }
 
-    $json = file_get_contents('php://input');
-    $data = json_decode($json, true);
-
-    if (!$data || empty($data['nombre']) || empty($data['email']) || empty($data['mensaje'])) {
-        throw new Exception("Faltan datos obligatorios.");
-    }
-
-    // 1. Obtener conexión (Pasando array vacío como requiere tu función)
-    $pdo = establishUserSessionFunction([]); 
-
-    if (!$pdo) {
-        throw new Exception("No se pudo conectar con la base de datos.");
-    }
-
-    // 2. Comprobar ID de usuario si existe sesión
+    // Sanear datos
+    $name = trim($data['name'] ?? '');
+    $email = trim($data['email'] ?? '');
+    $message = trim($data['message'] ?? '');
+    
+    // El id_usuario es opcional (NULL si es visitante), pero lo cogemos si está logueado
+    // para tener trazabilidad.
     $id_usuario = isset($_SESSION['user_id']) ? $_SESSION['user_id'] : null;
 
-    // 3. Insertar Ticket
-    $query = "INSERT INTO tickets_soporte (id_usuario, nombre, email, mensaje, fecha_creacion, estado) 
-              VALUES (:id_u, :nom, :em, :msg, NOW(), 'abierto')";
-    
-    $stmt = $pdo->prepare($query);
-    $result = $stmt->execute([
-        ':id_u'  => $id_usuario,
-        ':nom'   => $data['nombre'],
-        ':em'    => $data['email'],
-        ':msg'   => $data['mensaje']
-    ]);
-
-    if (!$result) {
-        throw new Exception("Error al insertar en la base de datos.");
+    // Validaciones
+    if (empty($name) || empty($email) || empty($message)) {
+        $response['message'] = 'Por favor, rellena todos los campos.';
+        http_response_code(400);
+        echo json_encode($response);
+        exit;
     }
 
-    ob_clean(); // Limpiamos cualquier warning basura
-    echo json_encode(['success' => true, 'message' => '¡Ticket enviado correctamente!']);
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $response['message'] = 'El correo electrónico no es válido.';
+        http_response_code(400);
+        echo json_encode($response);
+        exit;
+    }
 
-} catch (Exception $e) {
-    ob_clean();
-    http_response_code(500);
-    echo json_encode([
-        'success' => false, 
-        'message' => $e->getMessage()
-    ]);
+    try {
+        if (!$pdo) throw new Exception("Error de conexión a la BD");
+
+        // Insertar en la tabla tickets_soporte
+        // Asegúrate que tu tabla tenga las columnas: nombre_remitente, email_remitente, mensaje, estado
+        // Si tienes una columna 'id_usuario' (FK) también puedes guardarla, si no, omítela.
+        
+        $sql = "INSERT INTO tickets_soporte (nombre_remitente, email_remitente, mensaje, estado, fecha_envio) 
+                VALUES (:name, :email, :message, 'Pendiente', NOW())";
+        
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([
+            ':name' => $name,
+            ':email' => $email,
+            ':message' => $message
+        ]);
+
+        $response['success'] = true;
+        $response['message'] = 'Tu mensaje ha sido enviado. Te responderemos pronto.';
+        http_response_code(201);
+
+    } catch (Exception $e) {
+        error_log("Error en contactUs.php: " . $e->getMessage());
+        $response['message'] = 'Error interno al enviar el mensaje. Inténtalo más tarde.';
+        http_response_code(500);
+    }
+} else {
+    http_response_code(405);
+    $response['message'] = 'Método no permitido';
 }
-ob_end_flush();
+
+echo json_encode($response);
+?>

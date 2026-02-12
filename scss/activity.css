@@ -1,0 +1,58 @@
+.activity-card {
+  min-height: 500px;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.nav-pills .nav-link {
+  color: #495057;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  padding: 1rem;
+}
+.nav-pills .nav-link:hover {
+  color: #fd7e14;
+}
+.nav-pills .nav-link.active {
+  background-color: #fd7e14 !important;
+  color: #fff !important;
+}
+
+#notifications-container .list-group-item,
+#following-container .list-group-item,
+#followers-container .list-group-item {
+  border-left: 0;
+  border-right: 0;
+  transition: background-color 0.2s ease;
+}
+#notifications-container .list-group-item:first-child,
+#following-container .list-group-item:first-child,
+#followers-container .list-group-item:first-child {
+  border-top: 0;
+}
+#notifications-container .list-group-item.bg-light,
+#following-container .list-group-item.bg-light,
+#followers-container .list-group-item.bg-light {
+  background-color: rgba(253, 126, 20, 0.05) !important;
+}
+#notifications-container .list-group-item:hover,
+#following-container .list-group-item:hover,
+#followers-container .list-group-item:hover {
+  background-color: rgb(254.9, 248.55, 243.25);
+}
+
+.text-orange {
+  color: #fd7e14 !important;
+}
+
+.hover-orange:hover {
+  color: #fd7e14 !important;
+}
+
+.fa-bell-slash, .fa-user-friends {
+  opacity: 0.3;
+}
+
+.tab-pane.fade {
+  transition: opacity 0.15s linear;
+}/*# sourceMappingURL=activity.css.map */

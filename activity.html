@@ -1,31 +1,22 @@
-<!-- profile.html --> 
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Perfil de Usuario - CookSocial</title>
+    <title>Actividad - CookSocial</title>
     
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <link rel="stylesheet" href="scss/notifications.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="icon" type="image/svg+xml" href="resources/favicon.jpg">
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <!--cookies-->
-    <script type="text/javascript" charset="UTF-8" src="//cdn.cookie-script.com/s/55a4fd4bf81ab7c25086b05e84cf552b.js"></script>
-    <!-- Ajax -->
-    <script src="js/ajax/auth-service.js"></script>
-    <script src="js/ajax/profile-service.js"></script>
-    <script src="js/ajax/interaction-service.js"></script>
-    <script src="js/ajax/notification-service.js"></script>
-
-    <script src="js/notifications.js"></script>
-    <script src="js/profile.js"></script>
     
-    <link rel="stylesheet" href="scss/profile.css">
+    <!-- CSS del Proyecto -->
+    <link rel="stylesheet" href="scss/notifications.css">
+    <link rel="stylesheet" href="scss/activity.css">
+
 </head>
-<body class="bg-orange-light">
+<body class="bg-light">
+
     <!-- Navbar Unificada -->
     <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm sticky-top">
                 <div class="container">
@@ -95,49 +86,62 @@
                 </div>
 </nav>
 
-    <!-- Main Content -->
     <main class="container my-5">
-        <!-- Contenedor para la info del perfil (será llenado por JS) -->
-        <div id="profileInfoContainer">
-            <!-- Placeholder mientras carga -->
-            <div class="text-center py-5">
-                <div class="spinner-border text-orange" style="width: 3rem; height: 3rem;" role="status">
-                    <span class="visually-hidden">Cargando perfil...</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- Pestañas de contenido (se mostrarán después de cargar perfil) -->
-        <div id="profileContentTabs" style="display:none;">
-            <ul class="nav nav-tabs mb-4" id="profileTabs" role="tablist">
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link active" id="published-tab" data-bs-toggle="tab" data-bs-target="#published" type="button" role="tab" aria-controls="published" aria-selected="true">
-                        <i class="bi bi-book-half me-1"></i> Recetas Publicadas (<span id="publishedRecipeCount">0</span>)
-                    </button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="saved-tab" data-bs-toggle="tab" data-bs-target="#saved" type="button" role="tab" aria-controls="saved" aria-selected="false">
-                        <i class="bi bi-bookmark-heart-fill me-1"></i> Guardadas (<span id="savedRecipeCount">0</span>)
-                    </button>
-                </li>
-            </ul>
-
-            <div class="tab-content py-4" id="profileTabsContent">
-                <div class="tab-pane fade show active" id="published" role="tabpanel" aria-labelledby="published-tab">
-                    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4" id="publishedRecipesContainer">
-                        <!-- Recetas publicadas por el usuario -->
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <h1 class="h3 mb-4 fw-bold text-center">Tu Actividad</h1>
+                
+                <div class="card shadow-sm border-0 activity-card">
+                    <div class="card-header bg-white border-bottom">
+                        <ul class="nav nav-pills nav-fill" id="activityTabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="pills-notifications-tab" data-bs-toggle="pill" data-bs-target="#pills-notifications" type="button" role="tab" aria-selected="true" data-type="notifications">
+                                    <i class="fas fa-bell me-2"></i>Notificaciones
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="pills-following-tab" data-bs-toggle="pill" data-bs-target="#pills-following" type="button" role="tab" aria-selected="false" data-type="following">
+                                    <i class="fas fa-user-check me-2"></i>Seguidos
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="pills-followers-tab" data-bs-toggle="pill" data-bs-target="#pills-followers" type="button" role="tab" aria-selected="false" data-type="followers">
+                                    <i class="fas fa-users me-2"></i>Seguidores
+                                </button>
+                            </li>
+                        </ul>
                     </div>
-                </div>
-                <div class="tab-pane fade" id="saved" role="tabpanel" aria-labelledby="saved-tab">
-                    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4" id="savedRecipesContainer">
-                        <!-- Recetas guardadas por el usuario -->
+                    <div class="card-body p-0">
+                        <div class="tab-content" id="pills-tabContent">
+                            
+                            <!-- Tab: Notificaciones -->
+                            <div class="tab-pane fade show active" id="pills-notifications" role="tabpanel">
+                                <div id="notifications-container" class="list-group list-group-flush">
+                                    <!-- Contenido dinámico -->
+                                </div>
+                            </div>
+                            
+                            <!-- Tab: Seguidos -->
+                            <div class="tab-pane fade" id="pills-following" role="tabpanel">
+                                <div id="following-container" class="list-group list-group-flush">
+                                     <!-- Contenido dinámico -->
+                                </div>
+                            </div>
+                            
+                            <!-- Tab: Seguidores -->
+                            <div class="tab-pane fade" id="pills-followers" role="tabpanel">
+                                <div id="followers-container" class="list-group list-group-flush">
+                                     <!-- Contenido dinámico -->
+                                </div>
+                            </div>
+
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </main>
 
-<!-- Footer -->
     <footer class="bg-white mt-5 py-4 border-top">
         <div class="container text-center">
             <div class="mb-3">
@@ -150,6 +154,18 @@
         </div>
     </footer>
 
+    <!-- SCRIPTS (Orden del "Modelo de Éxito") -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script src="js/ajax/auth-service.js"></script>
+    <script src="js/ajax/interaction-service.js"></script> 
+    <script src="js/ajax/activity-service.js"></script>
+    <script src="js/ajax/notification-service.js"></script>
+    
+    <script src="js/redirect/auth-guard-user.js"></script> 
+    <script src="js/notifications.js"></script>            
+    <script src="js/activity.js"></script>             
+
 </body>
 </html>

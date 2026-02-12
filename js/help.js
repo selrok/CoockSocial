@@ -1,92 +1,82 @@
 // TFG/js/help.js
 
-$(function() {
-    console.log("help.js: Controlador cargado.");
+$(document).ready(function() {
+    console.log("help.js: DOM ready. Esperando evento de sesión...");
 
-    // 1. Caché de selectores para optimización
     const $form = $('#supportForm');
-    const $nameInput = $('#name');
-    const $emailInput = $('#email');
+    // IMPORTANTE: Asegúrate que los IDs en el HTML coincidan
+    const $nameInput = $('#name'); 
+    const $emailInput = $('#email'); 
     const $messageInput = $('#message');
-    const $btnSubmit = $form.find('button[type="submit"]');
-    let $msgDiv = $('#supportFormMessages');
+    const $msgContainer = $('#supportFormMessages');
 
-    // Crear el contenedor de mensajes si no existe
-    if ($form.length && !$msgDiv.length) {
-        $msgDiv = $('<div id="supportFormMessages" class="mt-3"></div>');
-        $form.before($msgDiv);
-    }
+    // 1. GESTIÓN DE SESIÓN
+    // Escuchar el evento que notifications.js dispara cuando termina de verificar al usuario
+    $(document).on('sessionStatusChecked', function(event, sessionData) {
+        console.log("help.js: Evento de sesión recibido:", sessionData);
+        
+        if (sessionData && sessionData.is_logged_in && sessionData.data) {
+            const user = sessionData.data;
+            
+            // Autocompletar nombre
+            if (user.nombre_completo) {
+                $nameInput.val(user.nombre_completo).prop('disabled', true);
+            } else if (user.username) {
+                $nameInput.val(user.username).prop('disabled', true);
+            }
 
-    /**
-     * Escucha el estado de la sesión (Gestionado por notifications.js)
-     */
-    $(document).on('sessionStatusChecked', function(event, sessionResponse) {
-        if (sessionResponse && sessionResponse.is_logged_in && sessionResponse.data) {
-            const user = sessionResponse.data;
-            // Bloqueamos campos para usuarios registrados
-            $nameInput.val(user.nombre_completo || user.username).prop('disabled', true);
-            $emailInput.val(user.email).prop('disabled', true);
+            // Autocompletar email
+            if (user.email) {
+                $emailInput.val(user.email).prop('disabled', true);
+            }
         } else {
-            // Habilitamos para invitados
-            $nameInput.val('').prop('disabled', false);
-            $emailInput.val('').prop('disabled', false);
+            // Si no hay sesión, asegurarnos de que están editables y vacíos (opcional)
+            // $nameInput.val('').prop('disabled', false);
+            // $emailInput.val('').prop('disabled', false);
         }
     });
 
-    /**
-     * Envío del formulario con validación Bootstrap 5
-     */
+    // 2. GESTIÓN DE ENVÍO
     $form.on('submit', function(e) {
         e.preventDefault();
 
-        // Limpiar mensajes previos
-        $msgDiv.hide().removeClass('alert-success alert-danger alert-info');
+        // Limpiar mensajes
+        $msgContainer.text('').removeClass();
 
-        if (!this.checkValidity()) {
+        // Validaciones HTML5
+        if (this.checkValidity() === false) {
             e.stopPropagation();
-            $(this).addClass('was-validated');
+            $form.addClass('was-validated');
             return;
         }
 
-        // Estado de carga
-        $btnSubmit.prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span> Enviando...');
-        $msgDiv.text('Procesando solicitud...').addClass('alert alert-info').fadeIn();
-
-        // Preparar datos (val() obtiene el valor aunque esté disabled)
-        const ticketData = {
-            nombre: $nameInput.val().trim(),
+        // Preparar datos
+        const formData = {
+            name: $nameInput.val().trim(),
             email: $emailInput.val().trim(),
-            mensaje: $messageInput.val().trim()
+            message: $messageInput.val().trim()
         };
 
-        // 3. Llamada al Servicio AJAX
-        if (typeof HelpService !== 'undefined') {
-            HelpService.sendTicket(ticketData)
-                .done(function(res) {
-                    if (res.success) {
-                        $msgDiv.text(res.message).removeClass('alert-info').addClass('alert alert-success');
-                        $messageInput.val('');
-                        $form.removeClass('was-validated');
-                        // Si es invitado, vaciamos todo
-                        if (!$nameInput.prop('disabled')) $form[0].reset();
-                    } else {
-                        $msgDiv.text("Error: " + res.message).removeClass('alert-info').addClass('alert alert-danger');
-                    }
-                })
-                .fail(function(jqXHR) {
-                    console.error("Error completo del servidor:", jqXHR.responseText);
-                    let errMsg = "Error en el servidor. Inténtalo más tarde.";
-                    if (jqXHR.responseJSON && jqXHR.responseJSON.message) {
-                        errMsg = jqXHR.responseJSON.message;
-                    }
-                    $msgDiv.text(errMsg).removeClass('alert-info').addClass('alert alert-danger');
-                })
-                .always(function() {
-                    $btnSubmit.prop('disabled', false).text('Enviar Mensaje');
-                });
-        } else {
-            $msgDiv.text("Error técnico: HelpService no detectado.").addClass('alert alert-danger');
-            $btnSubmit.prop('disabled', false).text('Enviar Mensaje');
-        }
+        const $btn = $(this).find('button[type="submit"]');
+        const btnOriginalText = $btn.html();
+        $btn.prop('disabled', true).text('Enviando...');
+
+        // Llamar al servicio nuevo
+        SendHelpService.sendTicket(formData)
+            .done(function(response) {
+                if (response.success) {
+                    $msgContainer.text(response.message).addClass('alert alert-success');
+                    $messageInput.val(''); // Limpiar solo el mensaje
+                    $form.removeClass('was-validated');
+                } else {
+                    $msgContainer.text(response.message).addClass('alert alert-danger');
+                }
+            })
+            .fail(function() {
+                $msgContainer.text('Error de conexión al enviar el mensaje.').addClass('alert alert-danger');
+            })
+            .always(function() {
+                $btn.prop('disabled', false).html(btnOriginalText);
+            });
     });
 });

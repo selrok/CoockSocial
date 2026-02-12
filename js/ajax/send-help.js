@@ -1,13 +1,14 @@
 // TFG/js/ajax/send-help.js
 
-window.HelpService = {
+const SendHelpService = {
     /**
-     * Envía el ticket al endpoint contactUs.php
-     * @param {Object} ticketData - Datos del formulario
+     * Envía un ticket de soporte.
+     * @param {object} ticketData { name, email, message }
      */
     sendTicket: function(ticketData) {
+        console.log("SendHelpService: Enviando...", ticketData);
         return $.ajax({
-            url: 'api/contactUs.php',
+            url: 'api/contactUs.php', // Ruta relativa al index.html/help.html
             type: 'POST',
             contentType: 'application/json',
             data: JSON.stringify(ticketData),
@@ -16,3 +17,5 @@ window.HelpService = {
         });
     }
 };
+
+if (typeof window !== 'undefined') { window.SendHelpService = SendHelpService; }
