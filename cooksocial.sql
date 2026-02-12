@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1
--- Tiempo de generación: 30-01-2026 a las 14:04:22
+-- Tiempo de generación: 12-02-2026 a las 16:18:23
 -- Versión del servidor: 10.4.32-MariaDB
 -- Versión de PHP: 8.2.12
 
@@ -63,11 +63,10 @@ CREATE TABLE `comentarios_receta` (
 
 INSERT INTO `comentarios_receta` (`id`, `id_receta`, `id_usuario`, `contenido`, `fecha_comentario`, `es_visible`) VALUES
 (1, 1, 8, 'Prueba 1', '2026-01-09 21:04:49', 1),
-(9, 4, 7, 'Prueba 2', '2026-01-09 21:09:46', 0),
-(10, 4, 7, 'Prueba 2', '2026-01-09 21:10:00', 1),
 (11, 4, 6, 'Porque salen dos insercioneees', '2026-01-09 21:18:04', 1),
 (12, 2, 5, 'Prueba 3', '2026-01-09 21:21:28', 1),
-(17, 2, 9, 'Hola hola', '2026-01-19 19:11:12', 1);
+(17, 2, 9, 'Hola hola', '2026-01-19 19:11:12', 0),
+(24, 3, 1, 'Prueba', '2026-02-09 20:48:16', 1);
 
 -- --------------------------------------------------------
 
@@ -128,10 +127,7 @@ INSERT INTO `ingredientes_receta` (`id`, `id_receta`, `descripcion_ingrediente`)
 (40, 4, 'Pimienta negra molida al gusto'),
 (41, 4, 'Especias al gusto tipo tajín o pimentón'),
 (42, 4, 'Aceite de oliva virgen'),
-(51, 10, 'Leche'),
-(55, 9, 'berenjena'),
-(56, 9, 'limón'),
-(57, 9, 'sal');
+(61, 17, 'asdgtade');
 
 -- --------------------------------------------------------
 
@@ -150,9 +146,11 @@ CREATE TABLE `likes_receta` (
 --
 
 INSERT INTO `likes_receta` (`id_usuario`, `id_receta`, `fecha_like`) VALUES
+(1, 1, '2026-02-09 20:05:32'),
 (1, 2, '2026-01-25 01:12:21'),
 (5, 3, '2026-01-23 20:54:48'),
-(9, 3, '2026-01-23 20:54:48');
+(9, 3, '2026-01-23 20:54:48'),
+(11, 4, '2026-02-11 00:03:12');
 
 -- --------------------------------------------------------
 
@@ -163,14 +161,31 @@ INSERT INTO `likes_receta` (`id_usuario`, `id_receta`, `fecha_like`) VALUES
 CREATE TABLE `notificaciones` (
   `id` int(11) NOT NULL,
   `id_usuario_receptor` int(11) NOT NULL COMMENT 'Usuario que recibe la notificación',
-  `tipo` enum('comentario','like','seguidor','sistema_moderacion') NOT NULL,
-  `mensaje` text NOT NULL,
+  `id_usuario_emisor` int(11) DEFAULT NULL,
+  `tipo` enum('comentario','like','seguidor','baneo_receta','baneo_comentario') NOT NULL,
   `id_origen_contenido` int(11) DEFAULT NULL COMMENT 'ID del contenido relacionado (receta, comentario, usuario)',
-  `tipo_origen_contenido` varchar(50) DEFAULT NULL COMMENT 'Tipo de contenido: "receta", "comentario", "usuario"',
-  `enlace_relacionado` varchar(255) DEFAULT NULL COMMENT 'URL para redirigir al usuario',
   `leida` tinyint(1) NOT NULL DEFAULT 0 COMMENT '0 = no leída, 1 = leída',
   `fecha_creacion` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Volcado de datos para la tabla `notificaciones`
+--
+
+INSERT INTO `notificaciones` (`id`, `id_usuario_receptor`, `id_usuario_emisor`, `tipo`, `id_origen_contenido`, `leida`, `fecha_creacion`) VALUES
+(1, 1, 9, 'like', 1, 1, '2026-02-08 19:43:16'),
+(2, 1, 10, 'comentario', 1, 1, '2026-02-09 09:02:57'),
+(3, 1, 1, 'baneo_receta', NULL, 1, '2026-02-09 09:02:57'),
+(4, 1, 4, 'seguidor', 4, 1, '2026-02-09 09:09:56'),
+(5, 1, 1, 'baneo_receta', 1, 1, '2026-02-09 09:09:56'),
+(6, 1, 6, 'baneo_comentario', 4, 1, '2026-02-09 19:18:26'),
+(23, 1, 11, 'comentario', 9, 1, '2026-02-10 15:58:07'),
+(24, 11, 1, 'baneo_comentario', 9, 1, '2026-02-10 15:59:05'),
+(25, 1, 1, 'baneo_receta', 15, 1, '2026-02-10 19:25:52'),
+(26, 1, 11, 'seguidor', 11, 1, '2026-02-10 20:01:04'),
+(27, 1, 11, 'like', 4, 0, '2026-02-11 00:03:12'),
+(28, 11, 1, 'seguidor', 1, 0, '2026-02-11 19:36:26'),
+(29, 8, 1, 'seguidor', 1, 0, '2026-02-12 11:04:11');
 
 -- --------------------------------------------------------
 
@@ -209,10 +224,7 @@ INSERT INTO `pasos_preparacion` (`id`, `id_receta`, `numero_paso`, `descripcion_
 (17, 4, 2, 'Extender una tortilla de harina de trigo en un plato o fuente y cubrir con queso abundantemente. Disponer en la mitad el mango superponiendo varias láminas ligeramente. Añadir especias, pimienta negra molida y las hierbas al gusto.'),
 (18, 4, 3, 'Cerrar por la mitad con cuidado, reservar aparte y repetir el proceso con la otra tortilla de trigo.'),
 (19, 4, 4, 'Engrasar ligeramente con aceite una sartén o plancha y calentar a fuego medio. Añadir las tortillas dobladas, presionando con suavidad, y cocinar por cada lado hasta que estén bien doradas y crujientes, con el queso fundido. Servir inmediatamente.'),
-(26, 10, 1, 'vierte la leche en el vaso'),
-(27, 10, 2, 'Metela al microondas'),
-(30, 9, 1, 'pasito pa lante'),
-(31, 9, 2, 'pasito pa tras');
+(33, 17, 1, 'vxnbvgfxn');
 
 -- --------------------------------------------------------
 
@@ -245,9 +257,9 @@ INSERT INTO `recetas` (`id`, `id_usuario`, `titulo`, `descripcion`, `imagen_url`
 (2, 9, 'Baos de carne picada de cerdo', 'con encurtidos con mayonesa de sriracha y cacahuetes.', 'img/recipes/recipe_69447f04f01f3.jpg', 2, 80, '4', 1, 'facil', 'publica', '', '2025-12-18 22:24:04'),
 (3, 8, 'Guiso de judías blancas con tofu crujiente', 'con puerro y judías verdes', 'img/recipes/recipe_694998b75ca0f.jpg', 1, 25, '1', 2, 'dificil', 'publica', 'Descubre esta receta de sabores tradicionales a la que incorporamos un concepto más novedoso, como es el tofu crujiente, preparado en la sartén y aderezado para emular el bacon. Además de su gran sabor, este plato es vegetariano, está listo en 25 minutos y te permite seguir una dieta equilibrada.', '2025-12-22 19:15:03'),
 (4, 1, 'Quesadillas de mango', 'Receta fácil y rápida para cenar', NULL, 1, 10, '1', 2, 'facil', 'publica', '', '2025-12-30 13:03:15'),
-(8, 8, 'Prueba', 'asdxs', NULL, 2, 25, '8', 16, 'normal', 'publica', NULL, '2026-01-28 00:03:53'),
-(9, 1, 'Receta Editada', 'pasos e ingredientes', 'img/recipes/recipe_697bc76f693a5.png', 1, 40, '2', 1, 'dificil', 'publica', 'editado', '2026-01-28 00:16:12'),
-(10, 1, 'Prueba de que sigue funcionando', 'si si', 'img/recipes/recipe_697bb8a6db743.jpg', 4, 2, '1', 2, 'facil', 'publica', 'mu bueno mu bueno', '2026-01-29 19:44:38');
+(8, 8, 'Prueba', 'asdxs', NULL, 2, 25, '8', NULL, 'normal', 'publica', NULL, '2026-01-28 00:03:53'),
+(16, 4, 'Prueba de listado', 'cositas', NULL, 3, 25, '8', 13, 'normal', 'publica', NULL, '2026-02-11 18:08:00'),
+(17, 11, 'Receta Editada', 'agd', NULL, 1, 240, '2', 15, 'dificil', 'publica', 'adfgsdfg', '2026-02-11 18:25:53');
 
 -- --------------------------------------------------------
 
@@ -267,6 +279,7 @@ CREATE TABLE `recetas_guardadas` (
 
 INSERT INTO `recetas_guardadas` (`id_usuario`, `id_receta`, `fecha_guardado`) VALUES
 (1, 2, '2026-01-27 15:04:44'),
+(1, 8, '2026-02-03 20:33:48'),
 (9, 4, '2026-01-20 20:00:22');
 
 -- --------------------------------------------------------
@@ -289,7 +302,7 @@ CREATE TABLE `reportes_comentario` (
 --
 
 INSERT INTO `reportes_comentario` (`id`, `id_comentario`, `id_receta_asociada`, `id_usuario_reportador`, `fecha_reporte`, `estado`) VALUES
-(2, 17, 2, 1, '2026-01-24 00:01:51', 'Pendiente');
+(2, 17, 2, 1, '2026-01-24 00:01:51', 'Comentario Ocultado');
 
 -- --------------------------------------------------------
 
@@ -309,7 +322,9 @@ CREATE TABLE `reportes_receta` (
 --
 
 INSERT INTO `reportes_receta` (`id`, `id_receta`, `id_usuario_reportador`, `fecha_reporte`) VALUES
-(2, 2, 1, '2026-01-25 19:04:15');
+(4, 3, 1, '2026-02-06 21:52:50'),
+(5, 2, 1, '2026-02-06 23:10:31'),
+(6, 2, 11, '2026-02-10 12:22:11');
 
 -- --------------------------------------------------------
 
@@ -349,7 +364,10 @@ CREATE TABLE `seguidores` (
 
 INSERT INTO `seguidores` (`id_usuario_seguidor`, `id_usuario_seguido`, `fecha_seguimiento`) VALUES
 (1, 4, '2026-01-27 23:18:26'),
-(1, 9, '2026-01-28 14:01:03');
+(1, 8, '2026-02-12 11:04:11'),
+(1, 9, '2026-02-03 21:02:36'),
+(1, 11, '2026-02-11 19:36:26'),
+(11, 1, '2026-02-10 20:01:04');
 
 -- --------------------------------------------------------
 
@@ -371,7 +389,8 @@ CREATE TABLE `tickets_soporte` (
 --
 
 INSERT INTO `tickets_soporte` (`id`, `nombre_remitente`, `email_remitente`, `mensaje`, `fecha_envio`, `estado`) VALUES
-(1, 'prueba 2', 'pr2_4@gmail.com', 'Texto de prueba', '2025-05-28 19:28:36', 'Pendiente');
+(1, 'prueba 2', 'pr2_4@gmail.com', 'Texto de prueba', '2025-05-28 19:28:36', 'Solucionado'),
+(2, 'sergi', 'sergi1999.sc@gmail.com', 'Prueba envio', '2026-02-01 21:26:18', 'Pendiente');
 
 -- --------------------------------------------------------
 
@@ -390,14 +409,11 @@ CREATE TABLE `tipos_dieta_receta` (
 
 INSERT INTO `tipos_dieta_receta` (`id`, `nombre_dieta`) VALUES
 (11, 'Alcalina'),
-(12, 'Ayurvédica'),
 (7, 'Baja en carbohidratos'),
 (8, 'Baja en grasas'),
 (14, 'Baja en sodio'),
-(10, 'DASH (Para Hipertensos)'),
 (4, 'Frutariana'),
 (15, 'Hiperproteica'),
-(16, 'Hipocalórica'),
 (9, 'Mediterránea'),
 (1, 'Omnívora'),
 (5, 'Pescetariana'),
@@ -406,22 +422,6 @@ INSERT INTO `tipos_dieta_receta` (`id`, `nombre_dieta`) VALUES
 (13, 'Sin lactosa'),
 (3, 'Vegana'),
 (2, 'Vegetariana');
-
--- --------------------------------------------------------
-
---
--- Estructura de tabla para la tabla `user`
---
-
-CREATE TABLE `user` (
-  `id` int(11) NOT NULL,
-  `name` varchar(70) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL,
-  `username` varchar(70) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL,
-  `seguidos` int(11) NOT NULL,
-  `seguidores` int(11) NOT NULL,
-  `password` varchar(70) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL,
-  `date` date NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -446,15 +446,15 @@ CREATE TABLE `usuarios` (
 --
 
 INSERT INTO `usuarios` (`id`, `username`, `email`, `password_hash`, `nombre_completo`, `avatar_url`, `bio`, `id_rol`, `fecha_registro`) VALUES
-(1, 'sergisaiz', 'sergi1999.sc@gmail.com', '$2y$10$d9jEKHni6MioglWrQa//SehOoug7BmfR9S7UM/VVHcoMMBYwIfj/C', 'sergi', NULL, NULL, 1, '2025-05-26 20:44:35'),
+(1, 'sergisaiz', 'sergi1999.sc@gmail.com', '$2y$10$48jgVnnPJGl8Fmtv/RnCouekmeLxgu51uQxyKu232AGchQ4EcoC/O', 'sergiSaiz', 'img/avatars/avatar_6984b8220d149.jpg', 'Descripción Editada 2', 1, '2025-05-26 20:44:35'),
 (3, 'Maun2', 'Maun2000@gmail.com', '$2y$10$L7es8a/ND5sElizy5xYMi.VHlmXC96AxwMD6uW.c3e9PwP3128ex6', 'Manu Garcia', NULL, NULL, 3, '2025-05-26 21:08:22'),
 (4, 'sercli99', 'sergi1999.sc@outlook.es', '$2y$10$lFEkmEVFWjvYDmslywI1wObL7wQ/yW/D9DLfhJRKccJq6XCiukTE2', 'Sergi Saiz', NULL, NULL, 3, '2025-05-27 18:40:46'),
 (5, 'pr1_23', 'pr123@gmail.com', '$2y$10$bLwc2lbleKwjTDYOWfMpGeHj0cWVjh1TFMuJYe31CZEAKNNDjcj8m', 'prueba', NULL, NULL, 2, '2025-05-27 19:11:28'),
-(6, 'pr2_4', 'pr2_4@gmail.com', '$2y$10$rFDyG0oBEQ75phT6cSMkAuus0DqL4hPFtvtJDmjzva8gp.ulCSvZu', 'prueba 2', NULL, NULL, 3, '2025-05-27 22:03:30'),
-(7, 'pr3_W', 'pr3_W@gmail.com', '$2y$10$XTQ4wDQesMwuAH.9GBKTpeFHWTKGMFnmBq1kz3NBO8NQZgHBce0bq', 'prueba3', NULL, NULL, 3, '2025-05-28 02:26:37'),
+(6, 'pr2_4', 'pr2_4@gmail.com', '$2y$10$rFDyG0oBEQ75phT6cSMkAuus0DqL4hPFtvtJDmjzva8gp.ulCSvZu', 'prueba 2', NULL, NULL, 2, '2025-05-27 22:03:30'),
 (8, 'Pr3_pb', 'pb3@gmaill.com', '$2y$10$VSHhiA0gFCZ8fTS70XjqguN53bit5BetVzL.d.UhEujat98iF5UVi', 'Prueba tres', NULL, NULL, 3, '2025-05-31 10:38:49'),
 (9, 'Prb7', 'Prb7@gmail.com', '$2y$10$CeAGXwV0dcx3960YEuylJ.GUQ13iwdt7UkT3rdvzefFynUSYKCkRK', 'Prueba 4', NULL, NULL, 3, '2025-12-08 19:09:49'),
-(10, 'Prueba García García', 'pgg@gmail.com', '$2y$10$00zPvOBgBAeF0y.2XJnHvu15KGdTE2GXT9yI6OafLNS2FROfjiFBa', 'Prueba8', NULL, NULL, 3, '2026-01-15 19:48:17');
+(10, 'Prueba García García', 'pgg@gmail.com', '$2y$10$00zPvOBgBAeF0y.2XJnHvu15KGdTE2GXT9yI6OafLNS2FROfjiFBa', 'Prueba8', NULL, NULL, 3, '2026-01-15 19:48:17'),
+(11, 'comProbar', 'Comrobar@gmail.com', '$2y$10$RIpbJXbw/T/ekkIAX5f9suV6fsFBUINAi2fdAThAgTiG6V1LSU/..', 'Comrobar', 'img/avatars/avatar_698bb74340ee7.jpg', NULL, 3, '2026-02-09 20:52:07');
 
 --
 -- Índices para tablas volcadas
@@ -567,13 +567,6 @@ ALTER TABLE `tipos_dieta_receta`
   ADD UNIQUE KEY `nombre_dieta` (`nombre_dieta`);
 
 --
--- Indices de la tabla `user`
---
-ALTER TABLE `user`
-  ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `username` (`username`);
-
---
 -- Indices de la tabla `usuarios`
 --
 ALTER TABLE `usuarios`
@@ -596,43 +589,43 @@ ALTER TABLE `categorias_receta`
 -- AUTO_INCREMENT de la tabla `comentarios_receta`
 --
 ALTER TABLE `comentarios_receta`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=24;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=31;
 
 --
 -- AUTO_INCREMENT de la tabla `ingredientes_receta`
 --
 ALTER TABLE `ingredientes_receta`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=58;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=62;
 
 --
 -- AUTO_INCREMENT de la tabla `notificaciones`
 --
 ALTER TABLE `notificaciones`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=30;
 
 --
 -- AUTO_INCREMENT de la tabla `pasos_preparacion`
 --
 ALTER TABLE `pasos_preparacion`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=32;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=34;
 
 --
 -- AUTO_INCREMENT de la tabla `recetas`
 --
 ALTER TABLE `recetas`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=18;
 
 --
 -- AUTO_INCREMENT de la tabla `reportes_comentario`
 --
 ALTER TABLE `reportes_comentario`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT de la tabla `reportes_receta`
 --
 ALTER TABLE `reportes_receta`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
 -- AUTO_INCREMENT de la tabla `roles`
@@ -644,7 +637,7 @@ ALTER TABLE `roles`
 -- AUTO_INCREMENT de la tabla `tickets_soporte`
 --
 ALTER TABLE `tickets_soporte`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT de la tabla `tipos_dieta_receta`
@@ -653,16 +646,10 @@ ALTER TABLE `tipos_dieta_receta`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=18;
 
 --
--- AUTO_INCREMENT de la tabla `user`
---
-ALTER TABLE `user`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
-
---
 -- AUTO_INCREMENT de la tabla `usuarios`
 --
 ALTER TABLE `usuarios`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
 
 --
 -- Restricciones para tablas volcadas
