@@ -1,121 +1,92 @@
 // TFG/js/help.js
 
-$(document).ready(function() {
-    console.log("help.js: DOM ready. Configurando página de ayuda.");
+$(function() {
+    console.log("help.js: Controlador cargado.");
 
-    // Selectores para el formulario de soporte
-    const $supportForm = $('#supportForm');
-    const $nameInput = $('#name');          // ID del campo Nombre
-    const $emailInput = $('#email');        // ID del campo Email (CORREGIDO A 'email')
-    const $messageInput = $('#message');    // ID del campo Mensaje
-    let $formMessagesDiv = $('#supportFormMessages'); 
+    // 1. Caché de selectores para optimización
+    const $form = $('#supportForm');
+    const $nameInput = $('#name');
+    const $emailInput = $('#email');
+    const $messageInput = $('#message');
+    const $btnSubmit = $form.find('button[type="submit"]');
+    let $msgDiv = $('#supportFormMessages');
 
-    // Crear div de mensajes si no existe en el HTML
-    if ($supportForm.length && !$formMessagesDiv.length) {
-        $formMessagesDiv = $('<div id="supportFormMessages" class="mt-3"></div>');
-        // Insertar antes del formulario, o después, según preferencia
-        $supportForm.before($formMessagesDiv); 
+    // Crear el contenedor de mensajes si no existe
+    if ($form.length && !$msgDiv.length) {
+        $msgDiv = $('<div id="supportFormMessages" class="mt-3"></div>');
+        $form.before($msgDiv);
     }
 
-    // Escuchar el evento 'sessionChecked' disparado por notifications.js
-    $(document).on('sessionChecked', function(event, sessionResponse) {
-        console.log("help.js: Evento 'sessionChecked' recibido:", sessionResponse);
-        
+    /**
+     * Escucha el estado de la sesión (Gestionado por notifications.js)
+     */
+    $(document).on('sessionStatusChecked', function(event, sessionResponse) {
         if (sessionResponse && sessionResponse.is_logged_in && sessionResponse.data) {
-            const userData = sessionResponse.data;
-            console.log("help.js: Usuario logueado:", userData.username);
-
-            // Autocompletar campos y hacerlos readonly si el usuario está logueado
-            if (userData.nombre_completo && $nameInput.length) {
-                $nameInput.val(userData.nombre_completo).prop('readonly', true);
-            } else if (userData.username && $nameInput.length) { 
-                // Fallback al username si no hay nombre_completo, aunque nombre_completo sería mejor
-                $nameInput.val(userData.username).prop('readonly', true);
-            }
-
-            if (userData.email && $emailInput.length) {
-                $emailInput.val(userData.email).prop('readonly', true);
-            }
+            const user = sessionResponse.data;
+            // Bloqueamos campos para usuarios registrados
+            $nameInput.val(user.nombre_completo || user.username).prop('disabled', true);
+            $emailInput.val(user.email).prop('disabled', true);
         } else {
-            console.log("help.js: Usuario no logueado o datos de sesión no disponibles.");
-            // Asegurarse de que los campos sean editables si no hay sesión
-            if ($nameInput.length) $nameInput.prop('readonly', false).val(''); 
-            if ($emailInput.length) $emailInput.prop('readonly', false).val(''); 
+            // Habilitamos para invitados
+            $nameInput.val('').prop('disabled', false);
+            $emailInput.val('').prop('disabled', false);
         }
     });
 
-    // Manejo del envío del formulario de soporte
-    if ($supportForm.length) {
-        $supportForm.on('submit', function(event) {
-            event.preventDefault(); 
-            if ($formMessagesDiv.length) $formMessagesDiv.empty().removeClass().addClass('mt-3'); 
+    /**
+     * Envío del formulario con validación Bootstrap 5
+     */
+    $form.on('submit', function(e) {
+        e.preventDefault();
 
-            // Validación de Bootstrap
-            this.classList.add('was-validated'); // 'this' es el formulario DOM element
-            if (!this.checkValidity()) {
-                event.stopPropagation();
-                // Buscar el primer campo inválido y hacerle focus (opcional, para UX)
-                $(this).find('.form-control:invalid').first().focus();
-                return;
-            }
+        // Limpiar mensajes previos
+        $msgDiv.hide().removeClass('alert-success alert-danger alert-info');
 
-            const name = $nameInput.val().trim();
-            const email = $emailInput.val().trim(); 
-            const message = $messageInput.val().trim();
+        if (!this.checkValidity()) {
+            e.stopPropagation();
+            $(this).addClass('was-validated');
+            return;
+        }
 
-            const ticketData = {
-                name: name,
-                email: email, 
-                message: message
-            };
+        // Estado de carga
+        $btnSubmit.prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span> Enviando...');
+        $msgDiv.text('Procesando solicitud...').addClass('alert alert-info').fadeIn();
 
-            console.log("help.js: Enviando ticket de soporte:", ticketData);
-            if ($formMessagesDiv.length) $formMessagesDiv.text('Enviando mensaje...').addClass('alert alert-info');
+        // Preparar datos (val() obtiene el valor aunque esté disabled)
+        const ticketData = {
+            nombre: $nameInput.val().trim(),
+            email: $emailInput.val().trim(),
+            mensaje: $messageInput.val().trim()
+        };
 
-            // Llamada AJAX para enviar el ticket
-            $.ajax({
-                url: 'api/support_tickets.php', 
-                type: 'POST',
-                contentType: 'application/json',
-                data: JSON.stringify(ticketData),
-                dataType: 'json',
-                xhrFields: { withCredentials: true } 
-            })
-            .done(function(response) {
-                console.log("help.js: Respuesta del servidor (ticket):", response);
-                if (response && response.success) {
-                    if ($formMessagesDiv.length) {
-                        $formMessagesDiv.text(response.message).removeClass().addClass('mt-3 alert alert-success');
+        // 3. Llamada al Servicio AJAX
+        if (typeof HelpService !== 'undefined') {
+            HelpService.sendTicket(ticketData)
+                .done(function(res) {
+                    if (res.success) {
+                        $msgDiv.text(res.message).removeClass('alert-info').addClass('alert alert-success');
+                        $messageInput.val('');
+                        $form.removeClass('was-validated');
+                        // Si es invitado, vaciamos todo
+                        if (!$nameInput.prop('disabled')) $form[0].reset();
+                    } else {
+                        $msgDiv.text("Error: " + res.message).removeClass('alert-info').addClass('alert alert-danger');
                     }
-                    // Limpiar solo el campo de mensaje si el usuario estaba logueado,
-                    // ya que nombre y email son readonly y pre-rellenados.
-                    if ($messageInput.length) $messageInput.val(''); 
-                    $supportForm.removeClass('was-validated'); // Quitar estilos de validación
-
-                    // Si el usuario NO estaba logueado, el formulario completo se puede resetear.
-                    if (!$nameInput.prop('readonly')) { // Si el nombre NO es readonly, el usuario no estaba logueado
-                        $supportForm[0].reset();
+                })
+                .fail(function(jqXHR) {
+                    console.error("Error completo del servidor:", jqXHR.responseText);
+                    let errMsg = "Error en el servidor. Inténtalo más tarde.";
+                    if (jqXHR.responseJSON && jqXHR.responseJSON.message) {
+                        errMsg = jqXHR.responseJSON.message;
                     }
-                    
-                } else {
-                    if ($formMessagesDiv.length) {
-                        $formMessagesDiv.text('Error: ' + (response.message || 'No se pudo enviar el mensaje.'))
-                                       .removeClass().addClass('mt-3 alert alert-danger');
-                    }
-                }
-            })
-            .fail(function(jqXHR) {
-                console.error("help.js: Error AJAX al enviar ticket:", jqXHR);
-                let errorMsg = "Error de comunicación. Inténtalo más tarde.";
-                if (jqXHR.responseJSON && jqXHR.responseJSON.message) {
-                    errorMsg = jqXHR.responseJSON.message;
-                } else if (jqXHR.responseText) { // Intentar obtener mensaje si no es JSON
-                    errorMsg = jqXHR.responseText.substring(0,100) + "..."; // Acortar si es HTML de error
-                }
-                if ($formMessagesDiv.length) {
-                    $formMessagesDiv.text('Error: ' + errorMsg).removeClass().addClass('mt-3 alert alert-danger');
-                }
-            });
-        });
-    }
+                    $msgDiv.text(errMsg).removeClass('alert-info').addClass('alert alert-danger');
+                })
+                .always(function() {
+                    $btnSubmit.prop('disabled', false).text('Enviar Mensaje');
+                });
+        } else {
+            $msgDiv.text("Error técnico: HelpService no detectado.").addClass('alert alert-danger');
+            $btnSubmit.prop('disabled', false).text('Enviar Mensaje');
+        }
+    });
 });

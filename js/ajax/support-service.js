@@ -30,10 +30,9 @@ const SupportService = {
             console.log("SupportService.sendTicket - Éxito AJAX:", response);
         })
         .fail(function(jqXHR, textStatus, errorThrown) {
-            console.error("SupportService.sendTicket - Fallo AJAX:", { /* ... */ });
+            console.error("SupportService.sendTicket - Fallo AJAX:", {jqXHR, textStatus, errorThrown});
         });
     }
-    // ...
 };
 
 if (typeof window !== 'undefined') {
